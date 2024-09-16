@@ -10,5 +10,11 @@ defmodule Sassone.State do
     :cdata_as_characters
   ]
 
-  defstruct [stack: []] ++ @enforce_keys
+  defstruct cdata_as_characters: nil,
+            character_data_max_length: nil,
+            expand_entity: nil,
+            handler: nil,
+            prolog: nil,
+            stack: [],
+            user_state: nil
 end
