@@ -14,6 +14,8 @@ defmodule Sassone.Handler do
 
   Returning `{:ok, new_state}` continues the parsing process with the new state.
 
+  Returning `{:cont, handler, new_state}` continues the parsing process with the new handler module and new state.
+
   Returning `{:stop, anything}` stops the prosing process immediately, and `anything` will be returned.
   This is usually handy when we want to get the desired return without parsing the whole file.
 
@@ -62,27 +64,31 @@ defmodule Sassone.Handler do
       end
   """
 
+  @type t :: module()
+
+  @type cdata_data() :: String.t()
+  @type characters_data() :: String.t()
+  @type end_document_data() :: any()
+  @type end_element_data() :: name :: String.t()
   @type event_name() ::
           :start_document | :end_document | :start_element | :characters | :cdata | :end_element
-
   @type start_document_data() :: Keyword.t()
-  @type end_document_data() :: any()
   @type start_element_data() ::
           {name :: String.t(), attributes :: [{name :: String.t(), value :: String.t()}]}
-  @type end_element_data() :: name :: String.t()
-  @type characters_data() :: String.t()
-  @type cdata_data() :: String.t()
 
   @type event_data() ::
-          start_document_data()
-          | end_document_data()
-          | start_element_data()
-          | end_element_data()
+          cdata_data()
           | characters_data()
-          | cdata_data()
+          | end_document_data()
+          | end_element_data()
+          | start_document_data()
+          | start_element_data()
+
+  @type user_state() :: any()
 
   @callback handle_event(event_type :: event_name(), data :: event_data(), user_state :: any()) ::
-              {:ok, user_state :: any()}
-              | {:stop, returning :: any()}
-              | {:halt, returning :: any()}
+              {:ok, user_state()}
+              | {:cont, t(), user_state()}
+              | {:stop, user_state()}
+              | {:halt, user_state()}
 end

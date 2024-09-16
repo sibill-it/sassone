@@ -1,7 +1,7 @@
 Sassone
 ====
 
-[![Test suite](https://github.com/qcam/sassone/actions/workflows/test.yml/badge.svg)](https://github.com/qcam/sassone/actions/workflows/test.yml)
+[![Test suite](https://github.com/sibill-it/sassone/actions/workflows/test.yml/badge.svg)](https://github.com/sibill-it/sassone/actions/workflows/test.yml)
 [![Module Version](https://img.shields.io/hexpm/v/sassone.svg)](https://hex.pm/packages/sassone)
 
 Sassone is an XML SAX parser and encoder in Elixir that focuses on speed, usability and standard compliance.
@@ -187,7 +187,7 @@ already made it happen 💪:
 * https://github.com/bennyhat/xml_json
 * https://github.com/xinz/sax_map
 
-Alternatively, this [pull request](https://github.com/qcam/sassone/pull/78) could
+Alternatively, this [pull request](https://github.com/qcam/saxy/pull/78) could
 serve as a good reference if you want to implement your own map-based handler.
 
 ### Does Sassone work with XPath?
@@ -216,7 +216,7 @@ against.
 
 Therefore the conclusion in this section is only for reference purpose. Please
 feel free to benchmark against your target documents. The benchmark suite can be found
-in [bench/](https://github.com/qcam/sassone/tree/master/bench).
+in [bench/](https://github.com/sibill-it/sassone/tree/master/bench).
 
 A rule of thumb is that we should compare apple to apple. Some XML parsers
 target only specific types of XML. Therefore some indicators are provided in the
@@ -240,13 +240,13 @@ Some quick and biased conclusions from the benchmark suite:
 
 ## Contributing
 
-If you have any issues or ideas, feel free to write to https://github.com/qcam/sassone/issues.
+If you have any issues or ideas, feel free to write to https://github.com/sibill-it/sassone/issues.
 
 To start developing:
 
 1. Fork the repository.
 2. Write your code and related tests.
-3. Create a pull request at https://github.com/qcam/sassone/pulls.
+3. Create a pull request at https://github.com/sibill-it/sassone/pulls.
 
 ## Copyright and License
 
