@@ -10,8 +10,8 @@ bench_options = [
   inputs: inputs
 ]
 
-saxy_parser = fn {data, _} ->
-  {:ok, _} = Saxy.SimpleForm.parse_string(data)
+sassone_parser = fn {data, _} ->
+  {:ok, _} = Sassone.SimpleForm.parse_string(data)
 end
 
 erlsom_parser = fn {_, data} ->
@@ -24,7 +24,7 @@ end
 
 Benchee.run(
   %{
-    "Saxy (green apple)" => saxy_parser,
+    "Sassone (green apple)" => sassone_parser,
     "Erlsom (green apple)" => erlsom_parser,
     "Exomler (red apple)" => exomler_parser
   },

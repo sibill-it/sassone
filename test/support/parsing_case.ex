@@ -1,11 +1,13 @@
-defmodule SaxyTest.ParsingCase do
+defmodule SassoneTest.ParsingCase do
+  @moduledoc false
+
   use ExUnit.CaseTemplate
 
   using do
     quote do
       use ExUnitProperties
 
-      import SaxyTest.Utils
+      import SassoneTest.Utils
     end
   end
 end
