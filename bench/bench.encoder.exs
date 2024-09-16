@@ -9,7 +9,7 @@ bench_options = [
 ]
 
 defmodule Bench.Sassone.Builder do
-  import Sassone.XML, only: [element: 3]
+  import Sassone.XML, only: [element: 4]
 
   def build(:simple) do
     element(nil, "root", [], [
@@ -27,7 +27,7 @@ defmodule Bench.Sassone.Builder do
   end
 
   def build(:nested) do
-    Enum.reduce(1000..1, "content", fn index, acc ->
+    Enum.reduce(1000..1//-1, "content", fn index, acc ->
       element(nil, "element.#{index}", [], acc)
     end)
   end
@@ -54,16 +54,15 @@ defmodule Bench.XMLBuilder.Builder do
 
   def build(:simple) do
     document("root", [], [
-      element(nil, "element1", [], []),
+      element("element1", [], []),
       element(
-        nil,
         "element2",
         [],
         Enum.map(0..9, fn index ->
-          element(nil, "element2.#{index}", [], "foo")
+          element("element2.#{index}", [], "foo")
         end)
       ),
-      element(nil, "element3", [], [])
+      element("element3", [], [])
     ])
   end
 
@@ -71,8 +70,8 @@ defmodule Bench.XMLBuilder.Builder do
     document(
       "level1",
       [],
-      Enum.reduce(1000..2, "content", fn index, acc ->
-        [element(nil, "element.#{index}", [], acc)]
+      Enum.reduce(1000..2//-1, "content", fn index, acc ->
+        [element("element.#{index}", [], acc)]
       end)
     )
   end
@@ -86,8 +85,8 @@ defmodule Bench.XMLBuilder.Builder do
       "root",
       [],
       [
-        element(nil, "many-strings", [], @strings),
-        element(nil, "long-string", [], @long_string)
+        element("many-strings", [], @strings),
+        element("long-string", [], @long_string)
       ]
     )
   end
