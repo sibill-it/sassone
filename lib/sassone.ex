@@ -72,8 +72,8 @@ defmodule Sassone do
   to encode the built element into XML binary.
 
       iex> import Sassone.XML
-      iex> element = element("person", [gender: "female"], "Alice")
-      {"person", [{"gender", "female"}], ["Alice"]}
+      iex> element = element(nil, "person", [gender: "female"], "Alice")
+      {nil, "person", [{"gender", "female"}], ["Alice"]}
       iex> Sassone.encode!(element, [version: "1.0"])
       "<?xml version=\"1.0\"?><person gender=\"female\">Alice</person>"
 
@@ -105,7 +105,7 @@ defmodule Sassone do
       iex> jack = %Person{gender: :male, name: "Jack", emails: ["john@example.com"]}
       iex> john = %Person{gender: :male, name: "John"}
       iex> import Sassone.XML
-      iex> root = element("people", [], [jack, john])
+      iex> root = element(nil, "people", [], [jack, john])
       iex> Sassone.encode!(root, [version: "1.0"])
       "<?xml version=\"1.0\"?><people><person gender=\"male\">Jack<emails count=\"1\"><email>john@example.com</email></emails></person><person gender=\"male\">John<emails count=\"0\"/></person></people>"
 
@@ -147,7 +147,7 @@ defmodule Sassone do
           {:ok, [{:end_document} | state]}
         end
 
-        def handle_event(:start_element, {name, attributes}, state) do
+        def handle_event(:start_element, {namespace, name, attributes}, state) do
           {:ok, [{:start_element, name, attributes} | state]}
         end
 
@@ -164,8 +164,8 @@ defmodule Sassone do
       iex> Sassone.parse_string(xml, MyTestHandler, [])
       {:ok,
        [{:end_document},
-        {:end_element, "foo"},
-        {:start_element, "foo", [{"bar", "value"}]},
+        {:end_element, {nil, "foo"}},
+        {:start_element, nil, "foo", [{"bar", "value"}]},
         {:start_document, [version: "1.0"]}]}
   """
 
@@ -225,7 +225,7 @@ defmodule Sassone do
           {:ok, [{:end_document} | state]}
         end
 
-        def handle_event(:start_element, {name, attributes}, state) do
+        def handle_event(:start_element, {namespace, name, attributes}, state) do
           {:ok, [{:start_element, name, attributes} | state]}
         end
 
@@ -242,8 +242,8 @@ defmodule Sassone do
       iex> Sassone.parse_stream(stream, MyTestHandler, [])
       {:ok,
        [{:end_document},
-        {:end_element, "foo"},
-        {:start_element, "foo", [{"bar", "value"}]},
+        {:end_element, {nil, "foo"}},
+        {:start_element, nil, "foo", [{"bar", "value"}]},
         {:start_document, [version: "1.0"]}]}
 
   ## Memory usage
@@ -332,8 +332,8 @@ defmodule Sassone do
       iex> Enum.to_list Sassone.stream_events stream
       [
         start_document: [version: "1.0"],
-        start_element: {"foo", [{"bar", "value"}]},
-        end_element: "foo"
+        start_element: {nil, "foo", [{"bar", "value"}]},
+        end_element: {nil, "foo"}
       ]
       iex> Enum.to_list Sassone.stream_events ["<foo>unclosed value"]
       ** (Sassone.ParseError) unexpected end of input, expected token: :chardata
@@ -411,7 +411,7 @@ defmodule Sassone do
   ## Examples
 
       iex> import Sassone.XML
-      iex> root = element(:foo, [{"foo", "bar"}], "bar")
+      iex> root = element(nil, :foo, [{"foo", "bar"}], "bar")
       iex> prolog = [version: "1.0"]
       iex> Sassone.encode!(root, prolog)
       "<?xml version=\\"1.0\\"?><foo foo=\\"bar\\">bar</foo>"
@@ -437,7 +437,7 @@ defmodule Sassone do
   ## Examples
 
       iex> import Sassone.XML
-      iex> root = element(:foo, [{"foo", "bar"}], "bar")
+      iex> root = element(nil, :foo, [{"foo", "bar"}], "bar")
       iex> prolog = [version: "1.0"]
       iex> Sassone.encode_to_iodata!(root, prolog)
       [

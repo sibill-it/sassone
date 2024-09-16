@@ -22,23 +22,26 @@ defmodule Sassone.SimpleFormTest do
 
     assert {:ok, simple_form} = xml |> remove_indents() |> Sassone.SimpleForm.parse_string()
 
-    assert {"menu", [], elements} = simple_form
+    assert {nil, "menu", [], elements} = simple_form
 
     assert [first_element | elements] = elements
 
-    assert {"movie", [{"url", "https://www.imdb.com/title/tt0120338/"}, {"id", "tt0120338"}],
+    assert {nil, "movie", [{"url", "https://www.imdb.com/title/tt0120338/"}, {"id", "tt0120338"}],
             first_children} = first_element
 
-    assert first_children == [{"name", [], ["Titanic"]}, {"characters", [], ["Jack & Rose"]}]
+    assert first_children == [
+             {nil, "name", [], ["Titanic"]},
+             {nil, "characters", [], ["Jack & Rose"]}
+           ]
 
     assert [second_element] = elements
 
-    assert {"movie", [{"url", "https://www.imdb.com/title/tt0109830/"}, {"id", "tt0109830"}],
+    assert {nil, "movie", [{"url", "https://www.imdb.com/title/tt0109830/"}, {"id", "tt0109830"}],
             second_children} = second_element
 
     assert second_children == [
-             {"name", [], ["Forest Gump"]},
-             {"characters", [], ["Forest & Jenny"]}
+             {nil, "name", [], ["Forest Gump"]},
+             {nil, "characters", [], ["Forest & Jenny"]}
            ]
   end
 
@@ -47,7 +50,7 @@ defmodule Sassone.SimpleFormTest do
 
     assert {:ok, simple_form} = Sassone.SimpleForm.parse_string(xml)
 
-    assert {"breakfast_menu", [], children} = simple_form
+    assert {nil, "breakfast_menu", [], children} = simple_form
     assert length(children) == 11
   end
 
@@ -73,23 +76,26 @@ defmodule Sassone.SimpleFormTest do
                expand_entity: {__MODULE__, :handle_entity_reference, []}
              )
 
-    assert {"menu", [], elements} = simple_form
+    assert {nil, "menu", [], elements} = simple_form
 
     assert [first_element | elements] = elements
 
-    assert {"movie", [{"url", "https://www.imdb.com/title/tt0120338/"}, {"id", "tt0120338"}],
+    assert {nil, "movie", [{"url", "https://www.imdb.com/title/tt0120338/"}, {"id", "tt0120338"}],
             first_children} = first_element
 
-    assert first_children == [{"name", [], ["Titanic"]}, {"characters", [], ["Jack & Rose ®"]}]
+    assert first_children == [
+             {nil, "name", [], ["Titanic"]},
+             {nil, "characters", [], ["Jack & Rose ®"]}
+           ]
 
     assert [second_element] = elements
 
-    assert {"movie", [{"url", "https://www.imdb.com/title/tt0109830/"}, {"id", "tt0109830"}],
+    assert {nil, "movie", [{"url", "https://www.imdb.com/title/tt0109830/"}, {"id", "tt0109830"}],
             second_children} = second_element
 
     assert second_children == [
-             {"name", [], ["Forest Gump"]},
-             {"characters", [], ["Forest & Jenny"]}
+             {nil, "name", [], ["Forest Gump"]},
+             {nil, "characters", [], ["Forest & Jenny"]}
            ]
   end
 
@@ -104,20 +110,20 @@ defmodule Sassone.SimpleFormTest do
              |> remove_indents()
              |> Sassone.SimpleForm.parse_string(cdata_as_characters: false)
 
-    assert simple_form == {"foo", [], [{:cdata, "<greeting>Hello, world!</greeting>"}]}
+    assert simple_form == {nil, "foo", [], [{:cdata, "<greeting>Hello, world!</greeting>"}]}
 
     assert {:ok, simple_form} =
              xml
              |> remove_indents()
              |> Sassone.SimpleForm.parse_string(cdata_as_characters: false)
 
-    assert simple_form == {"foo", [], [{:cdata, "<greeting>Hello, world!</greeting>"}]}
+    assert simple_form == {nil, "foo", [], [{:cdata, "<greeting>Hello, world!</greeting>"}]}
   end
 
   test "parse xml without expanding entity" do
     xml = "<foo><event>test &amp; test</event></foo>"
 
-    assert {:ok, {"foo", [], [{"event", [], ["test &amp; test"]}]}} ==
+    assert {:ok, {nil, "foo", [], [{nil, "event", [], ["test &amp; test"]}]}} ==
              Sassone.SimpleForm.parse_string(xml, expand_entity: :never)
   end
 

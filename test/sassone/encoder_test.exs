@@ -5,6 +5,7 @@ defmodule Sassone.EncoderTest do
 
   test "encodes empty element" do
     document = {
+      nil,
       "person",
       [{"first_name", "John"}, {"last_name", "Doe"}],
       []
@@ -19,6 +20,7 @@ defmodule Sassone.EncoderTest do
     content = [{:characters, "Hello my name is John Doe"}]
 
     document = {
+      nil,
       "person",
       [{"first_name", "John"}, {"last_name", "Doe"}],
       content
@@ -31,7 +33,7 @@ defmodule Sassone.EncoderTest do
   end
 
   test "encodes attributes with escapable characters" do
-    xml = encode({"person", [{"first_name", "&'\"<>"}], []})
+    xml = encode({nil, "person", [{"first_name", "&'\"<>"}], []})
 
     assert xml == ~s(<person first_name="&amp;&apos;&quot;&lt;&gt;"/>)
   end
@@ -39,7 +41,7 @@ defmodule Sassone.EncoderTest do
   test "encodes CDATA" do
     children = [{:cdata, "Tom & Jerry"}]
 
-    document = {"person", [], children}
+    document = {nil, "person", [], children}
     xml = encode(document, version: "1.0")
 
     assert xml == ~s(<?xml version="1.0"?><person><![CDATA[Tom & Jerry]]></person>)
@@ -50,21 +52,21 @@ defmodule Sassone.EncoderTest do
       {:characters, "Tom & Jerry"}
     ]
 
-    document = {"movie", [], content}
+    document = {nil, "movie", [], content}
     xml = encode(document, version: "1.0")
 
     assert xml == ~s(<?xml version="1.0"?><movie>Tom &amp; Jerry</movie>)
   end
 
   test "supports mentioning utf-8 encoding in the prolog (as atom)" do
-    document = {"body", [], []}
+    document = {nil, "body", [], []}
 
     xml = encode(document, version: "1.0", encoding: :utf8)
     assert xml == ~s(<?xml version="1.0" encoding="utf-8"?><body/>)
   end
 
   test "supports mentioning UTF-8 encoding in the prolog (as string)" do
-    document = {"body", [], []}
+    document = {nil, "body", [], []}
 
     xml = encode(document, version: "1.0", encoding: "UTF-8")
     assert xml == ~s(<?xml version="1.0" encoding="UTF-8"?><body/>)
@@ -80,7 +82,7 @@ defmodule Sassone.EncoderTest do
       {:reference, {:decimal, ?<}}
     ]
 
-    document = {"movie", [], content}
+    document = {nil, "movie", [], content}
     xml = encode(document, [])
 
     assert xml == ~s(<?xml version="1.0"?><movie>&foo;&x3C;&x60;</movie>)
@@ -92,7 +94,7 @@ defmodule Sassone.EncoderTest do
       {:comment, "A+, A, A-"}
     ]
 
-    document = {"movie", [], content}
+    document = {nil, "movie", [], content}
     xml = encode(document)
 
     assert xml == ~s(<movie><!--This is obviously a comment--><!--A+, A, A- --></movie>)
@@ -103,7 +105,7 @@ defmodule Sassone.EncoderTest do
       {:processing_instruction, "xml-stylesheet", "type=\"text/xsl\" href=\"style.xsl\""}
     ]
 
-    document = {"movie", [], content}
+    document = {nil, "movie", [], content}
     xml = encode(document, version: "1.0")
 
     assert xml ==
@@ -112,11 +114,11 @@ defmodule Sassone.EncoderTest do
 
   test "encodes nested element" do
     children = [
-      {"address", [{"street", "foo"}, {"city", "bar"}], []},
-      {"gender", [], [{:characters, "male"}]}
+      {nil, "address", [{"street", "foo"}, {"city", "bar"}], []},
+      {nil, "gender", [], [{:characters, "male"}]}
     ]
 
-    document = {"person", [{"first_name", "John"}, {"last_name", "Doe"}], children}
+    document = {nil, "person", [{"first_name", "John"}, {"last_name", "Doe"}], children}
     xml = encode(document)
 
     assert xml ==
@@ -128,19 +130,18 @@ defmodule Sassone.EncoderTest do
 
     items =
       for index <- 1..2 do
-        element(:item, [], [
-          element(:title, [], "Item #{index}"),
-          element(:link, [], "Link #{index}"),
+        element(nil, :item, [], [
+          element(nil, :title, [], "Item #{index}"),
+          element(nil, :link, [], "Link #{index}"),
           comment("Comment #{index}"),
-          element(:description, [], cdata("<a></b>")),
+          element(nil, :description, [], cdata("<a></b>")),
           characters("ABCDEFG"),
           reference(:entity, "copyright")
         ])
       end
 
     xml =
-      :rss
-      |> element([version: "2.0"], items)
+      element(nil, :rss, [version: "2.0"], items)
       |> encode(version: "1.0")
 
     expected = """
@@ -172,7 +173,7 @@ defmodule Sassone.EncoderTest do
     {document, xml} =
       Enum.reduce(100..1//-1, {"content", "content"}, fn index, {document, xml} ->
         {
-          Sassone.XML.element("level#{index}", [], document),
+          Sassone.XML.element(nil, "level#{index}", [], document),
           "<level#{index}>#{xml}</level#{index}>"
         }
       end)
@@ -183,7 +184,7 @@ defmodule Sassone.EncoderTest do
   end
 
   test "encodes non expanded entity reference" do
-    document = {"foo", [], [{"event", [], ["test &apos; test"]}]}
+    document = {nil, "foo", [], [{nil, "event", [], ["test &apos; test"]}]}
     assert "<foo><event>test &apos; test</event></foo>" == encode(document)
   end
 

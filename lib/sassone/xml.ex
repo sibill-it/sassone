@@ -33,7 +33,7 @@ defmodule Sassone.XML do
   @compile {
     :inline,
     [
-      element: 3,
+      element: 4,
       characters: 1,
       cdata: 1,
       comment: 1,
@@ -47,12 +47,14 @@ defmodule Sassone.XML do
   """
 
   @spec empty_element(
+          namespace :: term() | nil,
           name :: term(),
           attributes :: [{key :: term(), value :: term()}]
         ) :: element()
 
-  def empty_element(name, attributes) when not is_nil(name) do
+  def empty_element(namespace, name, attributes) when not is_nil(name) do
     {
+      namespace && to_string(namespace),
       to_string(name),
       attributes(attributes),
       []
@@ -64,13 +66,15 @@ defmodule Sassone.XML do
   """
 
   @spec element(
+          namespace :: term() | nil,
           name :: term(),
           attributes :: [{key :: term(), value :: term()}],
           children :: term()
         ) :: element()
 
-  def element(name, attributes, children) when not is_nil(name) do
+  def element(namespace, name, attributes, children) when not is_nil(name) do
     {
+      namespace && to_string(namespace),
       to_string(name),
       attributes(attributes),
       children(List.wrap(children))

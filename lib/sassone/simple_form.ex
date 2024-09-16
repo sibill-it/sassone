@@ -34,7 +34,7 @@ defmodule Sassone.SimpleForm do
 
       iex> xml = \"<foo><![CDATA[<greeting>Hello, world!</greeting>]]></foo>\"
       iex> {:ok, simple_form} = Sassone.SimpleForm.parse_string(xml, cdata_as_characters: true)
-      {:ok, {"foo", [], ["<greeting>Hello, world!</greeting>"]}}
+      {:ok, {nil, "foo", [], ["<greeting>Hello, world!</greeting>"]}}
       iex> Sassone.encode!(simple_form)
       "<foo><greeting>Hello, world!</greeting></foo>"
 
@@ -57,10 +57,11 @@ defmodule Sassone.SimpleForm do
       ...> \"\"\"
       iex> Sassone.SimpleForm.parse_string(xml)
       {:ok,
-       {"menu", [],
+       {nil, "menu", [],
         [
           "\\n  ",
           {
+            nil,
             "movie",
             [
               {"url", "https://www.imdb.com/title/tt0120338/"},
@@ -68,13 +69,14 @@ defmodule Sassone.SimpleForm do
             ],
             [
               "\\n    ",
-              {"name", [], ["Titanic"]},
+              {nil, "name", [], ["Titanic"]},
               "\\n    ",
-              {"characters", [], ["Jack & Rose"]},
+              {nil, "characters", [], ["Jack & Rose"]},
               "\\n  "]
           },
           "\\n  ",
           {
+          nil,
             "movie",
             [
               {"url", "https://www.imdb.com/title/tt0109830/"},
@@ -82,9 +84,9 @@ defmodule Sassone.SimpleForm do
             ],
             [
               "\\n    ",
-              {"name", [], ["Forest Gump"]},
+              {nil, "name", [], ["Forest Gump"]},
               "\\n    ",
-              {"characters", [], ["Forest & Jenny"]},
+              {nil, "characters", [], ["Forest & Jenny"]},
               "\\n  "
             ]
           },

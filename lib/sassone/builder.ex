@@ -31,6 +31,7 @@ defprotocol Sassone.Builder do
           count = Enum.count(emails)
 
           element(
+            nil,
             "emails",
             [count: Enum.count(emails)],
             Enum.map(emails, &element("email", [], &1))
@@ -40,7 +41,7 @@ defprotocol Sassone.Builder do
 
       iex> person = %Person{name: "Alice", gender: "female", emails: ["alice@foo.com", "alice@bar.com"]}
       iex> Sassone.Builder.build(person)
-      {"person", [{"gender", "female"}], ["Alice", {"emails", [{"count", "2"}], [{"email", [], ["alice@foo.com"]}, {"email", [], ["alice@bar.com"]}]}]}
+      {nil, "person", [{"gender", "female"}], ["Alice", {nil, "emails", [{"count", "2"}], [{nil, "email", [], ["alice@foo.com"]}, {nil, "email", [], ["alice@bar.com"]}]}]}
 
   Custom implementation could be done by implementing protocol:
 
@@ -53,6 +54,7 @@ defprotocol Sassone.Builder do
 
         def build(user) do
           element(
+            nil,
             "Person",
             [{"userName", user.username}],
             [element("Name", [], user.name)]
@@ -62,7 +64,7 @@ defprotocol Sassone.Builder do
 
       iex> user = %User{name: "Alice", username: "alice99"}
       iex> Sassone.Builder.build(user)
-      {"Person", [{"userName", "alice99"}], [{"Name", [], ["Alice"]}]}
+      {nil, "Person", [{"userName", "alice99"}], [{nil, "Name", [], ["Alice"]}]}
   """
 
   @doc """
@@ -96,7 +98,7 @@ defimpl Sassone.Builder, for: Any do
               &unquote(__MODULE__).fetch_value(struct, &1)
             )
 
-          element(unquote(name), attributes, children)
+          element(nil, unquote(name), attributes, children)
         end
       end
     end
@@ -137,7 +139,7 @@ defimpl Sassone.Builder, for: Tuple do
       when type in [:characters, :comment, :cdata, :reference],
       do: form
 
-  def build({_name, _attributes, _content} = form), do: form
+  def build({_ns, _name, _attributes, _content} = form), do: form
 
   def build(other) do
     raise Protocol.UndefinedError,

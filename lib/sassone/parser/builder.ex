@@ -670,7 +670,8 @@ defmodule Sassone.Parser.Builder do
 
           ">" <> rest ->
             %{stack: [tag_name | _]} = state
-            event_data = {tag_name, Enum.reverse(attributes)}
+            {ns, element} = split_element(tag_name)
+            event_data = {ns, element, Enum.reverse(attributes)}
             pos = pos + 1
 
             with {:cont, state} <- emit(:start_element, event_data, state, {original, pos}) do
@@ -682,11 +683,12 @@ defmodule Sassone.Parser.Builder do
             pos = pos + 2
 
             state = %{state | stack: stack}
-            event_data = {tag_name, Enum.reverse(attributes)}
+            {ns, element} = split_element(tag_name)
+            event_data = {ns, element, Enum.reverse(attributes)}
             on_halt_data = {original, pos}
 
             with {:cont, state} <- emit(:start_element, event_data, state, on_halt_data),
-                 {:cont, state} <- emit(:end_element, tag_name, state, on_halt_data) do
+                 {:cont, state} <- emit(:end_element, {ns, element}, state, on_halt_data) do
               case stack do
                 [] ->
                   element_misc(rest, more?, original, pos, state)
@@ -719,6 +721,13 @@ defmodule Sassone.Parser.Builder do
 
           _ ->
             Utils.parse_error(original, pos, state, {:token, :name_start_char})
+        end
+      end
+
+      defp split_element(tag_name) do
+        case String.split(tag_name, ":", parts: 2, trim: true) do
+          [ns, element] -> {ns, element}
+          [element] -> {nil, element}
         end
       end
 
@@ -1720,10 +1729,11 @@ defmodule Sassone.Parser.Builder do
           ">" <> rest ->
             [open_tag | stack] = state.stack
             ending_tag = binary_part(original, pos, copy_to)
+            {ns, element} = split_element(ending_tag)
             pos = pos + len + 1
 
             if open_tag == ending_tag do
-              with {:cont, state} <- emit(:end_element, ending_tag, state, {original, pos}) do
+              with {:cont, state} <- emit(:end_element, {ns, element}, state, {original, pos}) do
                 state = %{state | stack: stack}
 
                 case stack do

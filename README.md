@@ -53,8 +53,8 @@ defmodule MyEventHandler do
     {:ok, [{:end_document} | state]}
   end
 
-  def handle_event(:start_element, {name, attributes}, state) do
-    IO.inspect("Start parsing element #{name} with attributes #{inspect(attributes)}")
+  def handle_event(:start_element, {namespace, name, attributes}, state) do
+    IO.inspect("Start parsing namespace #{namespace} element #{name} with attributes #{inspect(attributes)}")
     {:ok, [{:start_element, name, attributes} | state]}
   end
 

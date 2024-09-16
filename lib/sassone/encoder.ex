@@ -46,21 +46,25 @@ defmodule Sassone.Encoder do
     [?\s, ~c"standalone", ?=, ?", "yes", ?"]
   end
 
-  defp element({tag_name, attributes, []}) do
-    [start_tag(tag_name, attributes), ?/, ?>]
+  defp element({ns, tag_name, attributes, []}) do
+    [start_tag(ns, tag_name, attributes), ?/, ?>]
   end
 
-  defp element({tag_name, attributes, contents}) do
+  defp element({ns, tag_name, attributes, contents}) do
     [
-      start_tag(tag_name, attributes),
+      start_tag(ns, tag_name, attributes),
       ?>,
       content(contents),
       end_tag(tag_name, contents)
     ]
   end
 
-  defp start_tag(tag_name, attributes) do
+  defp start_tag(nil, tag_name, attributes) do
     [?<, tag_name | attributes(attributes)]
+  end
+
+  defp start_tag(ns, tag_name, attributes) do
+    [?<, ns, ?:, tag_name | attributes(attributes)]
   end
 
   defp attributes([]), do: []

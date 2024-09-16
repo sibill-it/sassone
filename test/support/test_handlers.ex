@@ -53,8 +53,8 @@ defmodule MyTestHandler do
     {:ok, [{:end_document} | state]}
   end
 
-  def handle_event(:start_element, {name, attributes}, state) do
-    {:ok, [{:start_element, name, attributes} | state]}
+  def handle_event(:start_element, {namespace, name, attributes}, state) do
+    {:ok, [{:start_element, namespace, name, attributes} | state]}
   end
 
   def handle_event(:end_element, name, state) do
@@ -82,9 +82,10 @@ defmodule Person do
     email_count = Enum.count(emails)
 
     element(
+      nil,
       "emails",
       [count: email_count],
-      Enum.map(emails, &element("email", [], &1))
+      Enum.map(emails, &element(nil, "email", [], &1))
     )
   end
 end
@@ -100,9 +101,10 @@ defimpl Sassone.Builder, for: User do
 
   def build(user) do
     element(
+      nil,
       "Person",
       [{"userName", user.username}],
-      [element("Name", [], user.name)]
+      [element(nil, "Name", [], user.name)]
     )
   end
 end

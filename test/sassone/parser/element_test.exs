@@ -7,8 +7,8 @@ defmodule Sassone.Parser.ElementTest do
     events = assert_parse("<foo></foo>")
 
     assert events == [
-             {:start_element, {"foo", []}},
-             {:end_element, "foo"}
+             {:start_element, {nil, "foo", []}},
+             {:end_element, {nil, "foo"}}
            ]
 
     assert_parse("<cổc></cổc>")
@@ -34,26 +34,26 @@ defmodule Sassone.Parser.ElementTest do
     events = assert_parse(buffer, cdata_as_characters: false)
 
     item_attributes = [{"name", "[日本語] Tom & Jerry"}, {"category", "movie"}]
-    assert [{:start_element, {"item", ^item_attributes}} | events] = events
+    assert [{:start_element, {nil, "item", ^item_attributes}} | events] = events
 
     author_attributes = [{"name", "William Hanna & Joseph Barbera"}]
-    assert [{:start_element, {"author", ^author_attributes}} | events] = events
-    assert [{:end_element, "author"} | events] = events
+    assert [{:start_element, {nil, "author", ^author_attributes}} | events] = events
+    assert [{:end_element, {nil, "author"}} | events] = events
 
-    assert [{:start_element, {"description", []}} | events] = events
+    assert [{:start_element, {nil, "description", []}} | events] = events
     assert [{:cdata, "<strong>\"Tom & Jerry\" is a cool movie!</strong>"} | events] = events
-    assert [{:end_element, "description"} | events] = events
+    assert [{:end_element, {nil, "description"}} | events] = events
 
-    assert [{:start_element, {"actors", []}} | events] = events
-    assert [{:start_element, {"actor", []}} | events] = events
+    assert [{:start_element, {nil, "actors", []}} | events] = events
+    assert [{:start_element, {nil, "actor", []}} | events] = events
     assert [{:characters, "Tom"} | events] = events
-    assert [{:end_element, "actor"} | events] = events
-    assert [{:start_element, {"actor", []}} | events] = events
+    assert [{:end_element, {nil, "actor"}} | events] = events
+    assert [{:start_element, {nil, "actor", []}} | events] = events
     assert [{:characters, "Jerry"} | events] = events
-    assert [{:end_element, "actor"} | events] = events
-    assert [{:end_element, "actors"} | events] = events
+    assert [{:end_element, {nil, "actor"}} | events] = events
+    assert [{:end_element, {nil, "actors"}} | events] = events
 
-    assert [{:end_element, "item"} | events] = events
+    assert [{:end_element, {nil, "item"}} | events] = events
 
     assert events == []
   end
@@ -64,29 +64,29 @@ defmodule Sassone.Parser.ElementTest do
     events = assert_parse(buffer)
 
     assert events == [
-             {:start_element, {"foo", []}},
-             {:end_element, "foo"}
+             {:start_element, {nil, "foo", []}},
+             {:end_element, {nil, "foo"}}
            ]
 
     buffer = "<foo foo='FOO' bar='BAR'/>"
 
     events = assert_parse(buffer)
 
-    element = {"foo", [{"foo", "FOO"}, {"bar", "BAR"}]}
+    element = {nil, "foo", [{"foo", "FOO"}, {"bar", "BAR"}]}
 
     assert events == [
              {:start_element, element},
-             {:end_element, "foo"}
+             {:end_element, {nil, "foo"}}
            ]
 
     buffer = "<foo foo='Tom &amp; Jerry' bar='bar' />"
 
     events = assert_parse(buffer)
-    element = {"foo", [{"foo", "Tom & Jerry"}, {"bar", "bar"}]}
+    element = {nil, "foo", [{"foo", "Tom & Jerry"}, {"bar", "bar"}]}
 
     assert events == [
              {:start_element, element},
-             {:end_element, "foo"}
+             {:end_element, {nil, "foo"}}
            ]
   end
 
@@ -96,9 +96,9 @@ defmodule Sassone.Parser.ElementTest do
     events = assert_parse(buffer)
 
     assert events == [
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:characters, "Lorem Ipsum Lorem Ipsum"},
-             {:end_element, "foo"}
+             {:end_element, {nil, "foo"}}
            ]
 
     buffer = """
@@ -110,17 +110,17 @@ defmodule Sassone.Parser.ElementTest do
     events = assert_parse(buffer)
 
     assert events == [
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:characters, "\nLorem Ipsum Lorem Ipsum\n"},
-             {:end_element, "foo"}
+             {:end_element, {nil, "foo"}}
            ]
 
     events = assert_parse("<foo>  </foo>")
 
     assert events == [
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:characters, "  "},
-             {:end_element, "foo"}
+             {:end_element, {nil, "foo"}}
            ]
   end
 
@@ -201,32 +201,32 @@ defmodule Sassone.Parser.ElementTest do
 
   test "parses element attributes" do
     events = assert_parse("<foo abc='123' def=\"456\" g:hi='789' />")
-    tag = {"foo", [{"abc", "123"}, {"def", "456"}, {"g:hi", "789"}]}
+    tag = {nil, "foo", [{"abc", "123"}, {"def", "456"}, {"g:hi", "789"}]}
     assert find_event(events, :start_element, tag)
-    assert find_event(events, :end_element, "foo")
+    assert find_event(events, :end_element, {nil, "foo"})
 
     events = assert_parse(~s(<foo abc = "ABC" />))
-    tag = {"foo", [{"abc", "ABC"}]}
+    tag = {nil, "foo", [{"abc", "ABC"}]}
     assert find_event(events, :start_element, tag)
-    assert find_event(events, :end_element, "foo")
+    assert find_event(events, :end_element, {nil, "foo"})
 
     events = assert_parse(~s(<foo val="Tom &#x26; Jerry" />))
-    assert find_event(events, :start_element, {"foo", [{"val", "Tom & Jerry"}]})
-    assert find_event(events, :end_element, "foo")
+    assert find_event(events, :start_element, {nil, "foo", [{"val", "Tom & Jerry"}]})
+    assert find_event(events, :end_element, {nil, "foo"})
 
     error = refute_parse(~s(<foo val="Tom &#x26 Jerry" />))
     assert Exception.message(error) == "unexpected byte \" \", expected token: :char_ref"
 
     events = assert_parse(~s(<foo val="Tom &#38; Jerry" />))
-    assert find_event(events, :start_element, {"foo", [{"val", "Tom & Jerry"}]})
-    assert find_event(events, :end_element, "foo")
+    assert find_event(events, :start_element, {nil, "foo", [{"val", "Tom & Jerry"}]})
+    assert find_event(events, :end_element, {nil, "foo"})
 
     error = refute_parse(~s(<foo val="Tom &#38 Jerry" />))
     assert Exception.message(error) == "unexpected byte \" \", expected token: :char_ref"
 
     events = assert_parse(~s(<foo val="Tom &amp; Jerry" />))
-    assert find_event(events, :start_element, {"foo", [{"val", "Tom & Jerry"}]})
-    assert find_event(events, :end_element, "foo")
+    assert find_event(events, :start_element, {nil, "foo", [{"val", "Tom & Jerry"}]})
+    assert find_event(events, :end_element, {nil, "foo"})
   end
 
   @tag :property
@@ -235,13 +235,13 @@ defmodule Sassone.Parser.ElementTest do
     check all(name <- name()) do
       events = assert_parse("<#{name}></#{name}>")
 
-      assert events == [{:start_element, {name, []}}, {:end_element, name}]
+      assert events == [{:start_element, {nil, name, []}}, {:end_element, {nil, name}}]
     end
 
     check all(name <- name()) do
       events = assert_parse("<#{name}/>")
 
-      assert events == [{:start_element, {name, []}}, {:end_element, name}]
+      assert events == [{:start_element, {nil, name, []}}, {:end_element, {nil, name}}]
     end
   end
 
@@ -250,8 +250,8 @@ defmodule Sassone.Parser.ElementTest do
       events = assert_parse("<foo #{attribute_name}='bar'></foo>")
 
       assert events == [
-               {:start_element, {"foo", [{attribute_name, "bar"}]}},
-               {:end_element, "foo"}
+               {:start_element, {nil, "foo", [{attribute_name, "bar"}]}},
+               {:end_element, {nil, "foo"}}
              ]
     end
   end
@@ -272,9 +272,9 @@ defmodule Sassone.Parser.ElementTest do
         |> IO.iodata_to_binary()
 
       events = assert_parse("<foo foo='#{attribute_value}'></foo>")
-      element = {"foo", [{"foo", attribute_value}]}
+      element = {nil, "foo", [{"foo", attribute_value}]}
 
-      assert events == [{:start_element, element}, {:end_element, "foo"}]
+      assert events == [{:start_element, element}, {:end_element, {nil, "foo"}}]
     end
   end
 
