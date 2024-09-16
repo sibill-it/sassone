@@ -23,7 +23,7 @@ Add `:sassone` to your `mix.exs`.
 ```elixir
 def deps() do
   [
-    {:sassone, "~> 1.5"}
+    {:sassone, "~> 1.0"}
   ]
 end
 ```
