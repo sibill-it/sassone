@@ -15,10 +15,10 @@ defmodule Sassone.Emitter do
   defp emit(event_type, data, %State{} = state) do
     case state.handler.handle_event(event_type, data, state.user_state) do
       {:cont, handler, user_state} ->
-        {:ok, %{state | handler: handler, user_state: user_state}}
+        {:ok, %State{state | handler: handler, user_state: user_state}}
 
       {result, user_state} when result in [:ok, :stop, :halt] ->
-        {result, %{state | user_state: user_state}}
+        {result, %State{state | user_state: user_state}}
 
       other ->
         Parser.Utils.bad_return_error({event_type, other})
