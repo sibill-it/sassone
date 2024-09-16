@@ -11,10 +11,10 @@ jobs:
     strategy:
       matrix:
         script_file:
-          - 'bench.binary.exs'
-          - 'bench.stream.exs'
-          - 'bench.simple_form.exs'
-          - 'bench.encoder.exs'
+          - "bench.binary.exs"
+          - "bench.stream.exs"
+          - "bench.simple_form.exs"
+          - "bench.encoder.exs"
 
     runs-on: ubuntu-latest
 
@@ -25,17 +25,17 @@ jobs:
     name: ${{ matrix.script_file }}
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: '1.14'
-        otp-version: '25'
-    - name: Install Dependencies
-      run: |
-        mix local.rebar --force
-        mix local.hex --force
-        mix deps.get
-        mix compile
-    - name: Benchmark
-      run: mix run ${{ matrix.script_file }}
+      - uses: actions/checkout@v4
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.17"
+          otp-version: "27"
+      - name: Install Dependencies
+        run: |
+          mix local.rebar --force
+          mix local.hex --force
+          mix deps.get
+          mix compile
+      - name: Benchmark
+        run: mix run ${{ matrix.script_file }}

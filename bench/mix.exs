@@ -12,7 +12,7 @@ defmodule Bench.MixProject do
     ]
   end
 
-  def application(), do: []
+  def application(), do: [extra_applications: [:xmerl]]
 
   defp deps() do
     [
