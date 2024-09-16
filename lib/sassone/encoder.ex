@@ -55,7 +55,7 @@ defmodule Sassone.Encoder do
       start_tag(ns, tag_name, attributes),
       ?>,
       content(contents),
-      end_tag(tag_name, contents)
+      end_tag(ns, tag_name, contents)
     ]
   end
 
@@ -103,8 +103,12 @@ defmodule Sassone.Encoder do
     [element(element) | content(elements)]
   end
 
-  defp end_tag(tag_name, _other) do
+  defp end_tag(nil, tag_name, _other) do
     [?<, ?/, tag_name, ?>]
+  end
+
+  defp end_tag(ns, tag_name, _other) do
+    [?<, ?/, ns, ?:, tag_name, ?>]
   end
 
   defp characters(characters) do
