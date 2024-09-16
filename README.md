@@ -1,10 +1,10 @@
-Saxy
+Sassone
 ====
 
-[![Test suite](https://github.com/qcam/saxy/actions/workflows/test.yml/badge.svg)](https://github.com/qcam/saxy/actions/workflows/test.yml)
-[![Module Version](https://img.shields.io/hexpm/v/saxy.svg)](https://hex.pm/packages/saxy)
+[![Test suite](https://github.com/qcam/sassone/actions/workflows/test.yml/badge.svg)](https://github.com/qcam/sassone/actions/workflows/test.yml)
+[![Module Version](https://img.shields.io/hexpm/v/sassone.svg)](https://hex.pm/packages/sassone)
 
-Saxy (Sá xị) is an XML SAX parser and encoder in Elixir that focuses on speed, usability and standard compliance.
+Sassone is an XML SAX parser and encoder in Elixir that focuses on speed, usability and standard compliance.
 
 Comply with [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w3.org/TR/xml/).
 
@@ -18,19 +18,19 @@ Comply with [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w
 
 ## Installation
 
-Add `:saxy` to your `mix.exs`.
+Add `:sassone` to your `mix.exs`.
 
 ```elixir
 def deps() do
   [
-    {:saxy, "~> 1.5"}
+    {:sassone, "~> 1.5"}
   ]
 end
 ```
 
 ## Overview
 
-Full documentation is available on [HexDocs](https://hexdocs.pm/saxy/).
+Full documentation is available on [HexDocs](https://hexdocs.pm/sassone/).
 
 If you never work with a SAX parser before, please check out [this
 guide][sax-guide].
@@ -41,7 +41,7 @@ A SAX event handler implementation is required before starting parsing.
 
 ```elixir
 defmodule MyEventHandler do
-  @behaviour Saxy.Handler
+  @behaviour Sassone.Handler
 
   def handle_event(:start_document, prolog, state) do
     IO.inspect("Start parsing document")
@@ -79,7 +79,7 @@ Then start parsing XML documents with:
 
 ```elixir
 iex> xml = "<?xml version='1.0' ?><foo bar='value'></foo>"
-iex> Saxy.parse_string(xml, MyEventHandler, [])
+iex> Sassone.parse_string(xml, MyEventHandler, [])
 {:ok,
  [{:end_document},
   {:end_element, "foo"},
@@ -89,12 +89,12 @@ iex> Saxy.parse_string(xml, MyEventHandler, [])
 
 ### Streaming parsing
 
-Saxy also accepts file stream as the input:
+Sassone also accepts file stream as the input:
 
 ```elixir
 stream = File.stream!("/path/to/file")
 
-Saxy.parse_stream(stream, MyEventHandler, initial_state)
+Sassone.parse_stream(stream, MyEventHandler, initial_state)
 ```
 
 It even supports parsing a normal stream.
@@ -102,12 +102,12 @@ It even supports parsing a normal stream.
 ```elixir
 stream = File.stream!("/path/to/file") |> Stream.filter(&(&1 != "\n"))
 
-Saxy.parse_stream(stream, MyEventHandler, initial_state)
+Sassone.parse_stream(stream, MyEventHandler, initial_state)
 ```
 
 ### Partial parsing
 
-Saxy can parse an XML document partially. This feature is useful when the
+Sassone can parse an XML document partially. This feature is useful when the
 document cannot be turned into a stream e.g receiving over socket.
 
 ```elixir
@@ -124,10 +124,10 @@ Sometimes it will be convenient to just export the XML document into simple DOM
 format, which is a 3-element tuple including the tag name, attributes, and a
 list of its children.
 
-`Saxy.SimpleForm` module has this nicely supported:
+`Sassone.SimpleForm` module has this nicely supported:
 
 ```elixir
-Saxy.SimpleForm.parse_string(data)
+Sassone.SimpleForm.parse_string(data)
 
 {"menu", [],
  [
@@ -145,63 +145,63 @@ Saxy.SimpleForm.parse_string(data)
 
 ### XML builder
 
-Saxy offers two APIs to build simple form and encode XML document.
+Sassone offers two APIs to build simple form and encode XML document.
 
-Use `Saxy.XML` to build and compose XML simple form, then `Saxy.encode!/2`
+Use `Sassone.XML` to build and compose XML simple form, then `Sassone.encode!/2`
 to encode the built element into XML binary.
 
 ```elixir
-iex> import Saxy.XML
+iex> import Sassone.XML
 iex> element = element("person", [gender: "female"], "Alice")
 {"person", [{"gender", "female"}], [{:characters, "Alice"}]}
-iex> Saxy.encode!(element, [])
+iex> Sassone.encode!(element, [])
 "<?xml version=\"1.0\"?><person gender=\"female\">Alice</person>"
 ```
 
-See `Saxy.XML` for more XML building APIs.
+See `Sassone.XML` for more XML building APIs.
 
-Saxy also provides `Saxy.Builder` protocol to help composing structs into simple form.
+Sassone also provides `Sassone.Builder` protocol to help composing structs into simple form.
 
 ```elixir
 defmodule Person do
-  @derive {Saxy.Builder, name: "person", attributes: [:gender], children: [:name]}
+  @derive {Sassone.Builder, name: "person", attributes: [:gender], children: [:name]}
 
   defstruct [:gender, :name]
 end
 
 iex> jack = %Person{gender: :male, name: "Jack"}
 iex> john = %Person{gender: :male, name: "John"}
-iex> import Saxy.XML
+iex> import Sassone.XML
 iex> root = element("people", [], [jack, john])
-iex> Saxy.encode!(root, [])
+iex> Sassone.encode!(root, [])
 "<?xml version=\"1.0\"?><people><person gender=\"male\">Jack</person><person gender=\"male\">John</person></people>"
 ```
 
-## FAQs with Saxy/XMLs
+## FAQs with Sassone/XMLs
 
-### Saxy sounds cool! But I just wanted to quickly convert some XMLs into maps/JSON...
+### Sassone sounds cool! But I just wanted to quickly convert some XMLs into maps/JSON...
 
-Saxy does not have offer XML to maps conversion, because many awesome people
+Sassone does not have offer XML to maps conversion, because many awesome people
 already made it happen 💪:
 
 * https://github.com/bennyhat/xml_json
 * https://github.com/xinz/sax_map
 
-Alternatively, this [pull request](https://github.com/qcam/saxy/pull/78) could
+Alternatively, this [pull request](https://github.com/qcam/sassone/pull/78) could
 serve as a good reference if you want to implement your own map-based handler.
 
-### Does Saxy work with XPath?
+### Does Sassone work with XPath?
 
-Saxy in its core is a SAX parser, therefore Saxy does not, and likely will
+Sassone in its core is a SAX parser, therefore Sassone does not, and likely will
 not, offer any XPath functionality.
 
 [SweetXml][sweet_xml] is a wonderful library to work with XPath. However,
 `:xmerl`, the library used by SweetXml, is not always memory efficient and
 speedy. You can combine the best of both sides with [Saxmerl][saxmerl], which
-is a Saxy extension converting XML documents into SweetXml compatible format.
+is a Sassone extension converting XML documents into SweetXml compatible format.
 Please check that library out for more information.
 
-### Saxy! Where did the name come from?
+### Sassone! Where did the name come from?
 
 ![Sa xi Chuong Duong](./assets/saxi.jpg)
 
@@ -216,7 +216,7 @@ against.
 
 Therefore the conclusion in this section is only for reference purpose. Please
 feel free to benchmark against your target documents. The benchmark suite can be found
-in [bench/](https://github.com/qcam/saxy/tree/master/bench).
+in [bench/](https://github.com/qcam/sassone/tree/master/bench).
 
 A rule of thumb is that we should compare apple to apple. Some XML parsers
 target only specific types of XML. Therefore some indicators are provided in the
@@ -224,29 +224,29 @@ test suite to let know of the fairness of the benchmark results.
 
 Some quick and biased conclusions from the benchmark suite:
 
-* For SAX parser, Saxy is usually 1.4 times faster than [Erlsom](https://github.com/willemdj/erlsom).
-  With deeply nested documents, Saxy is noticeably faster (4 times faster).
-* For XML builder and encoding, Saxy is usually 10 to 30 times faster than [XML Builder](https://github.com/joshnuss/xml_builder).
+* For SAX parser, Sassone is usually 1.4 times faster than [Erlsom](https://github.com/willemdj/erlsom).
+  With deeply nested documents, Sassone is noticeably faster (4 times faster).
+* For XML builder and encoding, Sassone is usually 10 to 30 times faster than [XML Builder](https://github.com/joshnuss/xml_builder).
   With deeply nested documents, it could be 180 times faster.
-* Saxy significantly uses less memory than XML Builder (4 times to 25 times).
-* Saxy significantly uses less memory than Xmerl, Erlsom and Exomler (1.4 times
+* Sassone significantly uses less memory than XML Builder (4 times to 25 times).
+* Sassone significantly uses less memory than Xmerl, Erlsom and Exomler (1.4 times
   10 times).
 
 ## Limitations
 
 * No XSD supported.
-* No DTD supported, when Saxy encounters a `<!DOCTYPE`, it skips that.
+* No DTD supported, when Sassone encounters a `<!DOCTYPE`, it skips that.
 * Only support UTF-8 encoding.
 
 ## Contributing
 
-If you have any issues or ideas, feel free to write to https://github.com/qcam/saxy/issues.
+If you have any issues or ideas, feel free to write to https://github.com/qcam/sassone/issues.
 
 To start developing:
 
 1. Fork the repository.
 2. Write your code and related tests.
-3. Create a pull request at https://github.com/qcam/saxy/pulls.
+3. Create a pull request at https://github.com/qcam/sassone/pulls.
 
 ## Copyright and License
 
@@ -256,4 +256,4 @@ This software is licensed under [the MIT license](./LICENSE.md).
 
 [saxmerl]: https://github.com/qcam/saxmerl
 [sweet_xml]: https://github.com/kbrw/sweet_xml
-[sax-guide]: https://hexdocs.pm/saxy/getting-started-with-sax.html
+[sax-guide]: https://hexdocs.pm/sassone/getting-started-with-sax.html

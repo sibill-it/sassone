@@ -1,4 +1,6 @@
-defmodule SaxyTest.Utils do
+defmodule SassoneTest.Utils do
+  @moduledoc false
+
   use ExUnitProperties
 
   import ExUnit.Assertions
@@ -6,13 +8,12 @@ defmodule SaxyTest.Utils do
   def remove_indents(xml) do
     xml
     |> String.split("\n")
-    |> Enum.map(&String.trim/1)
-    |> Enum.join()
+    |> Enum.map_join(&String.trim/1)
   end
 
   def parse(data, handler, state, options \\ []) do
-    assert result = Saxy.parse_string(data, handler, state, options)
-    assert Saxy.parse_stream([data], handler, state, options) == result
+    assert result = Sassone.parse_string(data, handler, state, options)
+    assert Sassone.parse_stream([data], handler, state, options) == result
 
     result
   end
@@ -31,9 +32,9 @@ defmodule SaxyTest.Utils do
     |> File.stream!([], 100)
   end
 
-  def xml_quote(), do: one_of([constant(?"), constant(?')])
+  def xml_quote, do: one_of([constant(?"), constant(?')])
 
-  def xml_equal_sign() do
+  def xml_equal_sign do
     gen all s1 <- xml_whitespace(),
             s2 <- xml_whitespace() do
       s1 <> "=" <> s2

@@ -12,8 +12,8 @@ bench_options = [
   inputs: inputs
 ]
 
-saxy_parser = fn {data, _} ->
-  {:ok, _} = Saxy.parse_string(data, NoopHandler, nil)
+sassone_parser = fn {data, _} ->
+  {:ok, _} = Sassone.parse_string(data, NoopHandler, nil)
 end
 
 erlsom_parser = fn {_, data} ->
@@ -37,7 +37,7 @@ end
 
 Benchee.run(
   %{
-    "Saxy (apple)" => saxy_parser,
+    "Sassone (apple)" => sassone_parser,
     "Erlsom (apple)" => erlsom_parser,
     "Xmerl (apple)" => xmerl_parser,
     "Exomler (lemon)" => exomler_parser

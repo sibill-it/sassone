@@ -1,7 +1,7 @@
 # Getting started with SAX
 
 This guide is an introduction of how you could parse a XML document in SAX mode
-with Saxy.
+with Sassone.
 
 ## SAX (Simple API for XML)
 
@@ -38,7 +38,7 @@ will be a list of foods with name, price and description.
 </breakfast_menu>
 ```
 
-To parse a XML document the SAX way with Saxy, first you need to implement a
+To parse a XML document the SAX way with Sassone, first you need to implement a
 handler.
 
 Let's start with handling the start and end events of the document. No action to
@@ -46,7 +46,7 @@ take here, we simply return whatever passed in.
 
 ```
 defmodule FoodHandler do
-  @behaviour Saxy.Handler
+  @behaviour Sassone.Handler
 
   def handle_event(:start_document, _prolog, state) do
     {:ok, state}
@@ -67,7 +67,7 @@ well.
 To make it clear, let's call the state `foods` instead of `state`.
 
     defmodule FoodHandler do
-      @behaviour Saxy.Handler
+      @behaviour Sassone.Handler
 
       def handle_event(:start_element, {name, _attributes}, foods) do
         if name == "food" do
@@ -104,9 +104,9 @@ properties too.
     def handle_event(:characters, content, {current_tag, foods}) do
     case foods do
     [] -> {:ok, {current_tag, foods}}
-      
 
-    _ -> 
+
+    _ ->
     [current_food | foods] = foods
       food =
         case current_tag do
@@ -125,12 +125,12 @@ properties too.
 
       {:ok, {"food", [food | foods]}}
     end
-    end 
+    end
 
 As now we have implemented the event handler, it is time to parse the document.
 
     document = File.read!("/path/to/the/file")
-    Saxy.parse_string(document, FoodHandler, {nil, []})
+    Sassone.parse_string(document, FoodHandler, {nil, []})
     {:ok,
      [
        %Food{name: "Belgian Waffles", price: "$5.95", description: "Two of our famous Belgian Waffles with plenty of real maple syrup"},

@@ -1,13 +1,17 @@
-defmodule Saxy.TestHandlers.StackHandler do
-  @behaviour Saxy.Handler
+defmodule Sassone.TestHandlers.StackHandler do
+  @moduledoc false
+
+  @behaviour Sassone.Handler
 
   def handle_event(event_type, event_data, acc) do
     {:ok, [{event_type, event_data} | acc]}
   end
 end
 
-defmodule SaxyTest.StackHandler do
-  @behaviour Saxy.Handler
+defmodule SassoneTest.StackHandler do
+  @moduledoc false
+
+  @behaviour Sassone.Handler
 
   @impl true
   def handle_event(event_type, event_data, acc) do
@@ -15,8 +19,10 @@ defmodule SaxyTest.StackHandler do
   end
 end
 
-defmodule SaxyTest.ControlHandler do
-  @behaviour Saxy.Handler
+defmodule SassoneTest.ControlHandler do
+  @moduledoc false
+
+  @behaviour Sassone.Handler
 
   @impl true
   def handle_event(event_type, _, {event_type, returning}) do
@@ -35,7 +41,9 @@ end
 # For docs test
 
 defmodule MyTestHandler do
-  @behaviour Saxy.Handler
+  @moduledoc false
+
+  @behaviour Sassone.Handler
 
   def handle_event(:start_document, prolog, state) do
     {:ok, [{:start_document, prolog} | state]}
@@ -59,12 +67,14 @@ defmodule MyTestHandler do
 end
 
 defmodule Person do
+  @moduledoc false
+
   @derive {
-    Saxy.Builder,
+    Sassone.Builder,
     name: "person", attributes: [:gender], children: [:name, emails: &__MODULE__.build_emails/1]
   }
 
-  import Saxy.XML
+  import Sassone.XML
 
   defstruct [:name, :gender, emails: []]
 
@@ -80,11 +90,13 @@ defmodule Person do
 end
 
 defmodule User do
+  @moduledoc false
+
   defstruct [:username, :name]
 end
 
-defimpl Saxy.Builder, for: User do
-  import Saxy.XML
+defimpl Sassone.Builder, for: User do
+  import Sassone.XML
 
   def build(user) do
     element(

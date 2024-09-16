@@ -21,9 +21,9 @@ continue_file = fn tail, {io, offset, chunk} ->
   end
 end
 
-saxy_parser = fn file_path ->
+sassone_parser = fn file_path ->
   stream = File.stream!(file_path, [], 1024)
-  {:ok, _state} = Saxy.parse_stream(stream, NoopHandler, [])
+  {:ok, _state} = Sassone.parse_stream(stream, NoopHandler, [])
 end
 
 erlsom_parser = fn file_path ->
@@ -51,7 +51,7 @@ end
 
 Benchee.run(
   %{
-    "Saxy (apple)" => saxy_parser,
+    "Sassone (apple)" => sassone_parser,
     "Erlsom (apple)" => erlsom_parser,
     "Xmerl (apple)" => xmerl_parser
   },

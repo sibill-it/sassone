@@ -17,7 +17,7 @@ defmodule Bench.MixProject do
   defp deps() do
     [
       {:benchee, "~> 1.0"},
-      {:saxy, path: ".."},
+      {:sassone, path: ".."},
       {:erlsom, ">= 0.0.0"},
       {:exomler, github: "erlangbureau/exomler"},
       {:xml_builder, "~> 2.1"}
