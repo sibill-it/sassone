@@ -13,7 +13,6 @@ jobs:
         script_file:
           - "bench.binary.exs"
           - "bench.stream.exs"
-          - "bench.simple_form.exs"
           - "bench.encoder.exs"
 
     runs-on: ubuntu-latest
