@@ -14,8 +14,8 @@ defmodule Sassone.Partial do
       {:ok,
        [
          end_document: {},
-         end_element: "foo",
-         start_element: {"foo", []},
+         end_element: {nil, "foo"},
+         start_element: {nil, "foo", []},
          start_document: []
        ]}
 

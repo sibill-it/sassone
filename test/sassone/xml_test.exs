@@ -5,21 +5,20 @@ defmodule Sassone.XMLTest do
 
   describe "element/3" do
     test "generates element in simple form" do
-      assert element("foo", [], []) == {"foo", [], []}
-      assert element(:foo, [], []) == {"foo", [], []}
+      assert element(nil, "foo", [], []) == {nil, "foo", [], []}
+      assert element(nil, :foo, [], []) == {nil, "foo", [], []}
 
-      assert element("foo", [a: 1], []) == {"foo", [{"a", "1"}], []}
-      assert element("foo", %{"a" => 1}, []) == {"foo", [{"a", "1"}], []}
+      assert element(nil, "foo", [a: 1], []) == {nil, "foo", [{"a", "1"}], []}
+      assert element(nil, "foo", %{"a" => 1}, []) == {nil, "foo", [{"a", "1"}], []}
     end
   end
 
   describe "empty_element/2" do
     test "generates empty element in simple form" do
-      assert empty_element("foo", []) == {"foo", [], []}
-      assert empty_element(:foo, []) == {"foo", [], []}
-
-      assert empty_element("foo", a: 1) == {"foo", [{"a", "1"}], []}
-      assert empty_element("foo", %{"a" => 1}) == {"foo", [{"a", "1"}], []}
+      assert empty_element(nil, "foo", []) == {nil, "foo", [], []}
+      assert empty_element(nil, :foo, []) == {nil, "foo", [], []}
+      assert empty_element(nil, "foo", a: 1) == {nil, "foo", [{"a", "1"}], []}
+      assert empty_element(nil, "foo", %{"a" => 1}) == {nil, "foo", [{"a", "1"}], []}
     end
   end
 

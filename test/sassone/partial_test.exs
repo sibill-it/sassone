@@ -36,9 +36,9 @@ defmodule Sassone.PartialTest do
 
     assert events == [
              {:start_document, [version: "1.0"]},
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:characters, "foo"},
-             {:end_element, "foo"},
+             {:end_element, {nil, "foo"}},
              {:end_document, {}}
            ]
   end
@@ -48,9 +48,9 @@ defmodule Sassone.PartialTest do
     partial = parse_partial(chunks)
 
     assert Partial.get_state(partial) == [
-             {:end_element, "foo"},
+             {:end_element, {nil, "foo"}},
              {:characters, "sdf"},
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:start_document, []}
            ]
   end

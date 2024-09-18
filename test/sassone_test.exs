@@ -49,9 +49,9 @@ defmodule SassoneTest do
 
     assert state == [
              {:end_document, {}},
-             {:end_element, "foo"},
+             {:end_element, {nil, "foo"}},
              {:characters, "Something &unknown;"},
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:start_document, []}
            ]
 
@@ -59,9 +59,9 @@ defmodule SassoneTest do
 
     assert state == [
              {:end_document, {}},
-             {:end_element, "foo"},
+             {:end_element, {nil, "foo"}},
              {:characters, "Something "},
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:start_document, []}
            ]
 
@@ -70,9 +70,9 @@ defmodule SassoneTest do
 
     assert state == [
              {:end_document, {}},
-             {:end_element, "foo"},
+             {:end_element, {nil, "foo"}},
              {:characters, "Something known"},
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:start_document, []}
            ]
   end
@@ -84,9 +84,9 @@ defmodule SassoneTest do
 
     assert state == [
              end_document: {},
-             end_element: "foo",
+             end_element: {nil, "foo"},
              characters: "Some data",
-             start_element: {"foo", []},
+             start_element: {nil, "foo", []},
              start_document: []
            ]
   end
@@ -99,9 +99,9 @@ defmodule SassoneTest do
 
     assert event_stack == [
              {:end_document, {}},
-             {:end_element, "foo"},
+             {:end_element, {nil, "foo"}},
              {:characters, "𠜎𠜱𠝹𠱓"},
-             {:start_element, {"foo", []}},
+             {:start_element, {nil, "foo", []}},
              {:start_document, []}
            ]
   end
@@ -120,11 +120,11 @@ defmodule SassoneTest do
 
     assert state == [
              end_document: {},
-             end_element: "foo",
+             end_element: {nil, "foo"},
              characters: "",
              characters: second_chunk,
              characters: first_chunk,
-             start_element: {"foo", []},
+             start_element: {nil, "foo", []},
              start_document: []
            ]
 
@@ -132,9 +132,9 @@ defmodule SassoneTest do
 
     assert state == [
              end_document: {},
-             end_element: "foo",
+             end_element: {nil, "foo"},
              characters: first_chunk <> second_chunk,
-             start_element: {"foo", []},
+             start_element: {nil, "foo", []},
              start_document: []
            ]
   end
@@ -167,7 +167,7 @@ defmodule SassoneTest do
     import Sassone.XML
 
     test "encodes XML document into string" do
-      root = element("foo", [], "foo")
+      root = element(nil, "foo", [], "foo")
       assert Sassone.encode!(root, version: "1.0") == ~s(<?xml version="1.0"?><foo>foo</foo>)
     end
   end
@@ -176,7 +176,7 @@ defmodule SassoneTest do
     import Sassone.XML
 
     test "encodes XML document into IO data" do
-      root = element("foo", [], "foo")
+      root = element(nil, "foo", [], "foo")
       assert xml = Sassone.encode_to_iodata!(root, version: "1.0")
       assert is_list(xml)
       assert IO.iodata_to_binary(xml) == ~s(<?xml version="1.0"?><foo>foo</foo>)

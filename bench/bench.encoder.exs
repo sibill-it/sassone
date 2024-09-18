@@ -9,25 +9,26 @@ bench_options = [
 ]
 
 defmodule Bench.Sassone.Builder do
-  import Sassone.XML, only: [element: 3]
+  import Sassone.XML, only: [element: 4]
 
   def build(:simple) do
-    element("root", [], [
-      element("element1", [], []),
+    element(nil, "root", [], [
+      element(nil, "element1", [], []),
       element(
+        nil,
         "element2",
         [],
         Enum.map(0..9, fn index ->
-          element("element2.#{index}", [], "foo")
+          element(nil, "element2.#{index}", [], "foo")
         end)
       ),
-      element("element3", [], [])
+      element(nil, "element3", [], [])
     ])
   end
 
   def build(:nested) do
-    Enum.reduce(1000..1, "content", fn index, acc ->
-      element("element.#{index}", [], acc)
+    Enum.reduce(1000..1//-1, "content", fn index, acc ->
+      element(nil, "element.#{index}", [], acc)
     end)
   end
 
@@ -37,11 +38,12 @@ defmodule Bench.Sassone.Builder do
 
   def build(:long_content) do
     element(
+      nil,
       "root",
       [],
       [
-        element("many-strings", [], @strings),
-        element("long-string", [], @long_string)
+        element(nil, "many-strings", [], @strings),
+        element(nil, "long-string", [], @long_string)
       ]
     )
   end
@@ -68,7 +70,7 @@ defmodule Bench.XMLBuilder.Builder do
     document(
       "level1",
       [],
-      Enum.reduce(1000..2, "content", fn index, acc ->
+      Enum.reduce(1000..2//-1, "content", fn index, acc ->
         [element("element.#{index}", [], acc)]
       end)
     )

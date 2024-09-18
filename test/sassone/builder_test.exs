@@ -7,10 +7,10 @@ defmodule Sassone.BuilderTest do
   doctest Sassone.Builder
 
   test "builds pre-built simple-form element" do
-    element = Sassone.XML.element(:foo, [], [])
+    element = Sassone.XML.element(nil, :foo, [], [])
     assert build(element) == element
 
-    element = Sassone.XML.empty_element(:foo, [])
+    element = Sassone.XML.empty_element(nil, :foo, [])
     assert build(element) == element
 
     characters = Sassone.XML.characters("foo")
@@ -54,11 +54,12 @@ defmodule Sassone.BuilderTest do
 
   test "builds element from struct" do
     struct = %Struct{foo: "foo", bar: "bar"}
-    assert build(struct) == {"test", [{"foo", "foo"}], ["bar"]}
+    assert build(struct) == {nil, "test", [{"foo", "foo"}], ["bar"]}
 
     nested_struct = %Struct{bar: struct}
 
-    assert build(nested_struct) == {"test", [{"foo", ""}], [{"test", [{"foo", "foo"}], ["bar"]}]}
+    assert build(nested_struct) ==
+             {nil, "test", [{"foo", ""}], [{nil, "test", [{"foo", "foo"}], ["bar"]}]}
 
     underived_struct = %UnderivedStruct{}
     assert_raise Protocol.UndefinedError, fn -> build(underived_struct) end
@@ -78,13 +79,13 @@ defmodule Sassone.BuilderTest do
     def build_categories(categories) do
       import Sassone.XML
 
-      element("categories", [], categories)
+      element(nil, "categories", [], categories)
     end
 
     def build_cats(categories) do
       import Sassone.XML
 
-      element("cats", [], categories)
+      element(nil, "cats", [], categories)
     end
   end
 
@@ -103,15 +104,22 @@ defmodule Sassone.BuilderTest do
     }
 
     assert build(post) == {
+             nil,
              "post",
              [],
              [
-               {"category", [{"name", "foo"}], []},
-               {"category", [{"name", "bar"}], []},
-               {"cats", [],
-                [{"category", [{"name", "foo"}], []}, {"category", [{"name", "bar"}], []}]},
-               {"categories", [],
-                [{"category", [{"name", "foo"}], []}, {"category", [{"name", "bar"}], []}]}
+               {nil, "category", [{"name", "foo"}], []},
+               {nil, "category", [{"name", "bar"}], []},
+               {nil, "cats", [],
+                [
+                  {nil, "category", [{"name", "foo"}], []},
+                  {nil, "category", [{"name", "bar"}], []}
+                ]},
+               {nil, "categories", [],
+                [
+                  {nil, "category", [{"name", "foo"}], []},
+                  {nil, "category", [{"name", "bar"}], []}
+                ]}
              ]
            }
   end

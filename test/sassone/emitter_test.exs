@@ -39,12 +39,12 @@ defmodule Sassone.EmitterTest do
       assert parse_halt(data, :end_element) == ""
 
       data = "<?xml version=\"1.0\" ?><foo>foo <bar/></foo>"
-      assert parse_halt(data, {:start_element, {"foo", []}}) == "foo <bar/></foo>"
+      assert parse_halt(data, {:start_element, {nil, "foo", []}}) == "foo <bar/></foo>"
       assert parse_halt(data, {:characters, "foo "}) == "<bar/></foo>"
-      assert parse_halt(data, {:start_element, {"bar", []}}) == "</foo>"
-      assert parse_halt(data, {:end_element, "bar"}) == "</foo>"
-      assert parse_halt(data, {:end_element, "foo"}) == ""
-      assert parse_halt(data <> "trailing", {:end_element, "foo"}) == "trailing"
+      assert parse_halt(data, {:start_element, {nil, "bar", []}}) == "</foo>"
+      assert parse_halt(data, {:end_element, {nil, "bar"}}) == "</foo>"
+      assert parse_halt(data, {:end_element, {nil, "foo"}}) == ""
+      assert parse_halt(data <> "trailing", {:end_element, {nil, "foo"}}) == "trailing"
 
       data = "<?xml version=\"1.0\" ?><foo><![CDATA[foo]]></foo>"
       assert parse_halt(data, {:characters, "foo"}) == "</foo>"

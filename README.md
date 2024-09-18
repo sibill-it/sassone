@@ -23,7 +23,7 @@ Add `:sassone` to your `mix.exs`.
 ```elixir
 def deps() do
   [
-    {:sassone, "~> 1.5"}
+    {:sassone, "~> 1.0"}
   ]
 end
 ```
@@ -53,8 +53,8 @@ defmodule MyEventHandler do
     {:ok, [{:end_document} | state]}
   end
 
-  def handle_event(:start_element, {name, attributes}, state) do
-    IO.inspect("Start parsing element #{name} with attributes #{inspect(attributes)}")
+  def handle_event(:start_element, {namespace, name, attributes}, state) do
+    IO.inspect("Start parsing namespace #{namespace} element #{name} with attributes #{inspect(attributes)}")
     {:ok, [{:start_element, name, attributes} | state]}
   end
 
@@ -116,31 +116,6 @@ document cannot be turned into a stream e.g receiving over socket.
 {:cont, partial} = Partial.parse(partial, "<bar></bar>")
 {:cont, partial} = Partial.parse(partial, "</foo>")
 {:ok, state} = Partial.terminate(partial)
-```
-
-### Simple DOM format exporting
-
-Sometimes it will be convenient to just export the XML document into simple DOM
-format, which is a 3-element tuple including the tag name, attributes, and a
-list of its children.
-
-`Sassone.SimpleForm` module has this nicely supported:
-
-```elixir
-Sassone.SimpleForm.parse_string(data)
-
-{"menu", [],
- [
-   {"movie",
-    [{"id", "tt0120338"}, {"url", "https://www.imdb.com/title/tt0120338/"}],
-    [{"name", [], ["Titanic"]}, {"characters", [], ["Jack &amp; Rose"]}]},
-   {"movie",
-    [{"id", "tt0109830"}, {"url", "https://www.imdb.com/title/tt0109830/"}],
-    [
-      {"name", [], ["Forest Gump"]},
-      {"characters", [], ["Forest &amp; Jenny"]}
-    ]}
- ]}
 ```
 
 ### XML builder

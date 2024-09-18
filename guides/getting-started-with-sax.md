@@ -69,7 +69,7 @@ To make it clear, let's call the state `foods` instead of `state`.
     defmodule FoodHandler do
       @behaviour Sassone.Handler
 
-      def handle_event(:start_element, {name, _attributes}, foods) do
+      def handle_event(:start_element, {ns, name, _attributes}, foods) do
         if name == "food" do
           {:ok, [%Food{} | foods]}
         else
@@ -89,7 +89,7 @@ first food name does not include which tag it belongs to.
 So we need to somehow cache the current tag that is being parsed, let's revise
 our handler a little bit.
 
-    def handle_event(:start_element, {tag_name, _attributes}, {current_tag, foods}) do
+    def handle_event(:start_element, {namespace, tag_name, _attributes}, {current_tag, foods}) do
       if tag_name == "food" do
         foods = [%Food{} | foods]
         {:ok, {tag_name, foods}}

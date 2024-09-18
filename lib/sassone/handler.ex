@@ -50,7 +50,7 @@ defmodule Sassone.Handler do
           {:ok, [{:end_document} | state]}
         end
 
-        def handle_event(:start_element, {name, attributes}, state) do
+        def handle_event(:start_element, {namespace, name, attributes}, state) do
           {:ok, [{:start_element, name, attributes} | state]}
         end
 
