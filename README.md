@@ -6,7 +6,7 @@ Sassone
 
 Sassone is an XML SAX parser and encoder in Elixir that focuses on speed, usability and standard compliance.
 
-Sassone was born as a fork of the great [saxy](saxy) library to address some limitations we encountered,
+Sassone was born as a fork of the great [saxy][saxy] library to address some limitations we encountered,
 fix bugs with XML standards compliance and add features we felt where missing for our specific use cases.
 
 Comply with [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w3.org/TR/xml/).
