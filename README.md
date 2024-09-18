@@ -6,6 +6,9 @@ Sassone
 
 Sassone is an XML SAX parser and encoder in Elixir that focuses on speed, usability and standard compliance.
 
+Sassone was born as a fork of the great [saxy](saxy) library to address some limitations we encountered,
+fix bugs with XML standards compliance and add features we felt where missing for our specific use cases.
+
 Comply with [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w3.org/TR/xml/).
 
 ## Features highlight
@@ -178,9 +181,14 @@ Please check that library out for more information.
 
 ### Sassone! Where did the name come from?
 
-![Sa xi Chuong Duong](./assets/saxi.jpg)
+[Sassone](https://www.treccani.it/vocabolario/sassone/) is an italian word with
+two different meanings, depending how you pronounce it:
 
-Sa Xi, pronounced like `sa-see`, is an awesome soft drink made by [Chuong Duong](http://www.cdbeco.com.vn/en).
+1. `Sàssone` is the equivalent of the english word Saxon, a member of a people
+   that inhabited parts of central and northern Germany from Roman times, many
+   of whom conquered and settled in much of southern England in the 5th–6th centuries.
+2. `Sassòne` is a big rock (`sasso` in italian). e.g. `"Va che bel sassone!"` roughly
+    translates to `"What a nice big rock!"` in english.
 
 ## Benchmarking
 
@@ -229,6 +237,7 @@ Copyright (c) 2018 Cẩm Huỳnh
 
 This software is licensed under [the MIT license](./LICENSE.md).
 
+[saxy]: https://github.com/qcam/saxy
 [saxmerl]: https://github.com/qcam/saxmerl
 [sweet_xml]: https://github.com/kbrw/sweet_xml
 [sax-guide]: https://hexdocs.pm/sassone/getting-started-with-sax.html
