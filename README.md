@@ -118,31 +118,6 @@ document cannot be turned into a stream e.g receiving over socket.
 {:ok, state} = Partial.terminate(partial)
 ```
 
-### Simple DOM format exporting
-
-Sometimes it will be convenient to just export the XML document into simple DOM
-format, which is a 3-element tuple including the tag name, attributes, and a
-list of its children.
-
-`Sassone.SimpleForm` module has this nicely supported:
-
-```elixir
-Sassone.SimpleForm.parse_string(data)
-
-{"menu", [],
- [
-   {"movie",
-    [{"id", "tt0120338"}, {"url", "https://www.imdb.com/title/tt0120338/"}],
-    [{"name", [], ["Titanic"]}, {"characters", [], ["Jack &amp; Rose"]}]},
-   {"movie",
-    [{"id", "tt0109830"}, {"url", "https://www.imdb.com/title/tt0109830/"}],
-    [
-      {"name", [], ["Forest Gump"]},
-      {"characters", [], ["Forest &amp; Jenny"]}
-    ]}
- ]}
-```
-
 ### XML builder
 
 Sassone offers two APIs to build simple form and encode XML document.

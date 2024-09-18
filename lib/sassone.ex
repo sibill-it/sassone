@@ -28,10 +28,6 @@ defmodule Sassone do
 
   See `Sassone.Handler` for more information.
 
-  ### Simple form mode
-
-  Sassone supports parsing XML documents into a simple format. See `Sassone.SimpleForm` for more details.
-
   ### Encoding
 
   Sassone **only** supports UTF-8 encoding. It also respects the encoding set in XML document prolog, which means
