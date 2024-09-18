@@ -618,13 +618,21 @@ defmodule Sassone.Parser.Builder do
       defp open_tag(<<buffer::bits>>, more?, original, pos, state) do
         lookahead(buffer, @streaming) do
           char <> rest when is_ascii_name_start_char(char) ->
-            open_tag_name(rest, more?, original, pos, state, 1)
+            open_tag_name(rest, more?, original, pos, state, nil, 1)
 
           token in unquote(utf8_binaries()) when more? ->
             halt!(open_tag(token, more?, original, pos, state))
 
           <<codepoint::utf8>> <> rest when is_utf8_name_start_char(codepoint) ->
-            open_tag_name(rest, more?, original, pos, state, Utils.compute_char_len(codepoint))
+            open_tag_name(
+              rest,
+              more?,
+              original,
+              pos,
+              state,
+              nil,
+              Utils.compute_char_len(codepoint)
+            )
 
           _ in [""] when more? ->
             halt!(open_tag("", more?, original, pos, state))
@@ -634,10 +642,15 @@ defmodule Sassone.Parser.Builder do
         end
       end
 
-      defp open_tag_name(<<buffer::bits>>, more?, original, pos, state, len) do
+      defp open_tag_name(<<buffer::bits>>, more?, original, pos, state, ns, len) do
         lookahead(buffer, @streaming) do
+          char <> rest when is_ns_separator(char) ->
+            ns = binary_part(original, pos, len)
+
+            open_tag_name(rest, more?, original, pos + len + 1, state, ns, 0)
+
           char <> rest when is_ascii_name_char(char) ->
-            open_tag_name(rest, more?, original, pos, state, len + 1)
+            open_tag_name(rest, more?, original, pos, state, ns, len + 1)
 
           <<codepoint::utf8>> <> rest when is_utf8_name_char(codepoint) ->
             open_tag_name(
@@ -646,19 +659,20 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
+              ns,
               len + Utils.compute_char_len(codepoint)
             )
 
           token in unquote(utf8_binaries()) when more? ->
-            halt!(open_tag_name(token, more?, original, pos, state, len))
+            halt!(open_tag_name(token, more?, original, pos, state, ns, len))
 
           _ in [""] when more? ->
-            halt!(open_tag_name("", more?, original, pos, state, len))
+            halt!(open_tag_name("", more?, original, pos, state, ns, len))
 
           _ ->
             name = binary_part(original, pos, len)
             %{stack: stack} = state
-            state = %{state | stack: [name | stack]}
+            state = %{state | stack: [{ns, name} | stack]}
             sattribute(buffer, more?, original, pos + len, state, [])
         end
       end
@@ -669,9 +683,8 @@ defmodule Sassone.Parser.Builder do
             attribute_name(rest, more?, original, pos, state, attributes, 1)
 
           ">" <> rest ->
-            %{stack: [tag_name | _]} = state
-            {ns, element} = split_element(tag_name)
-            event_data = {ns, element, Enum.reverse(attributes)}
+            %{stack: [{ns, tag_name} | _]} = state
+            event_data = {ns, tag_name, Enum.reverse(attributes)}
             pos = pos + 1
 
             with {:cont, state} <- emit(:start_element, event_data, state, {original, pos}) do
@@ -679,16 +692,15 @@ defmodule Sassone.Parser.Builder do
             end
 
           "/>" <> rest ->
-            %{stack: [tag_name | stack]} = state
+            %{stack: [{ns, tag_name} | stack]} = state
             pos = pos + 2
 
             state = %{state | stack: stack}
-            {ns, element} = split_element(tag_name)
-            event_data = {ns, element, Enum.reverse(attributes)}
+            event_data = {ns, tag_name, Enum.reverse(attributes)}
             on_halt_data = {original, pos}
 
             with {:cont, state} <- emit(:start_element, event_data, state, on_halt_data),
-                 {:cont, state} <- emit(:end_element, {ns, element}, state, on_halt_data) do
+                 {:cont, state} <- emit(:end_element, {ns, tag_name}, state, on_halt_data) do
               case stack do
                 [] ->
                   element_misc(rest, more?, original, pos, state)
@@ -721,13 +733,6 @@ defmodule Sassone.Parser.Builder do
 
           _ ->
             Utils.parse_error(original, pos, state, {:token, :name_start_char})
-        end
-      end
-
-      defp split_element(tag_name) do
-        case String.split(tag_name, ":", parts: 2, trim: true) do
-          [ns, element] -> {ns, element}
-          [element] -> {nil, element}
         end
       end
 
@@ -1282,13 +1287,21 @@ defmodule Sassone.Parser.Builder do
       defp element_content_rest(<<buffer::bits>>, more?, original, pos, state) do
         lookahead buffer, @streaming do
           char <> rest when is_ascii_name_start_char(char) ->
-            open_tag_name(rest, more?, original, pos, state, 1)
+            open_tag_name(rest, more?, original, pos, state, nil, 1)
 
           <<codepoint::utf8>> <> rest when is_utf8_name_start_char(codepoint) ->
-            open_tag_name(rest, more?, original, pos, state, Utils.compute_char_len(codepoint))
+            open_tag_name(
+              rest,
+              more?,
+              original,
+              pos,
+              state,
+              nil,
+              Utils.compute_char_len(codepoint)
+            )
 
           "/" <> rest ->
-            close_tag_name(rest, more?, original, pos + 1, state, 0, 0)
+            close_tag_name(rest, more?, original, pos + 1, state, nil, 0, 0)
 
           "![CDATA[" <> rest ->
             element_cdata(rest, more?, original, pos + 8, state, 0)
@@ -1704,36 +1717,40 @@ defmodule Sassone.Parser.Builder do
         end
       end
 
-      defp close_tag_name(<<buffer::bits>>, more?, original, pos, state, 0, 0) do
+      defp close_tag_name(<<buffer::bits>>, more?, original, pos, state, close_ns, 0, 0) do
         lookahead buffer, @streaming do
           char <> rest when is_ascii_name_start_char(char) ->
-            close_tag_name(rest, more?, original, pos, state, 1, 1)
+            close_tag_name(rest, more?, original, pos, state, close_ns, 1, 1)
 
           token in unquote(utf8_binaries()) when more? ->
-            halt!(close_tag_name(token, more?, original, pos, state, 0, 0))
+            halt!(close_tag_name(token, more?, original, pos, state, close_ns, 0, 0))
 
           <<codepoint::utf8>> <> rest when is_utf8_name_start_char(codepoint) ->
             len = Utils.compute_char_len(codepoint)
-            close_tag_name(rest, more?, original, pos, state, len, len)
+            close_tag_name(rest, more?, original, pos, state, close_ns, len, len)
 
           _ in [""] when more? ->
-            halt!(close_tag_name("", more?, original, pos, state, 0, 0))
+            halt!(close_tag_name("", more?, original, pos, state, close_ns, 0, 0))
 
           _ ->
             Utils.parse_error(original, pos, state, {:token, :end_tag})
         end
       end
 
-      defp close_tag_name(<<buffer::bits>>, more?, original, pos, state, len, copy_to) do
+      defp close_tag_name(<<buffer::bits>>, more?, original, pos, state, close_ns, len, copy_to) do
         lookahead buffer, @streaming do
+          char <> rest when is_ns_separator(char) ->
+            close_ns = binary_part(original, pos, len)
+            close_tag_name(rest, more?, original, pos + len + 1, state, close_ns, 0, 0)
+
           ">" <> rest ->
-            [open_tag | stack] = state.stack
+            [{open_ns, open_tag} | stack] = state.stack
             ending_tag = binary_part(original, pos, copy_to)
-            {ns, element} = split_element(ending_tag)
             pos = pos + len + 1
 
-            if open_tag == ending_tag do
-              with {:cont, state} <- emit(:end_element, {ns, element}, state, {original, pos}) do
+            if open_tag == ending_tag && open_ns == close_ns do
+              with {:cont, state} <-
+                     emit(:end_element, {close_ns, ending_tag}, state, {original, pos}) do
                 state = %{state | stack: stack}
 
                 case stack do
@@ -1750,20 +1767,30 @@ defmodule Sassone.Parser.Builder do
             end
 
           char <> rest when is_ascii_name_char(char) ->
-            close_tag_name(rest, more?, original, pos, state, len + 1, copy_to + 1)
+            close_tag_name(rest, more?, original, pos, state, close_ns, len + 1, copy_to + 1)
 
           char <> rest when is_whitespace(char) ->
-            close_tag_name(rest, more?, original, pos, state, len + 1, copy_to)
+            close_tag_name(rest, more?, original, pos, state, close_ns, len + 1, copy_to)
 
           token in unquote(utf8_binaries()) when more? ->
-            halt!(close_tag_name(token, more?, original, pos, state, len, copy_to))
+            halt!(close_tag_name(token, more?, original, pos, state, close_ns, len, copy_to))
 
           <<codepoint::utf8>> <> rest when is_utf8_name_char(codepoint) ->
             char_len = Utils.compute_char_len(codepoint)
-            close_tag_name(rest, more?, original, pos, state, len + char_len, copy_to + char_len)
+
+            close_tag_name(
+              rest,
+              more?,
+              original,
+              pos,
+              state,
+              close_ns,
+              len + char_len,
+              copy_to + char_len
+            )
 
           _ in [""] when more? ->
-            halt!(close_tag_name("", more?, original, pos, state, len, copy_to))
+            halt!(close_tag_name("", more?, original, pos, state, close_ns, len, copy_to))
 
           _ ->
             Utils.parse_error(original, pos + len, state, {:token, :end_tag})

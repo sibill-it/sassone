@@ -5,6 +5,8 @@ defmodule Sassone.Guards do
 
   defguard is_whitespace(codepoint) when codepoint in [0xA, 0x9, 0xD, 0x20]
 
+  defguard is_ns_separator(codepoint) when codepoint == ?:
+
   defguard is_ascii_name_start_char(codepoint)
            when codepoint == ?: or
                   (codepoint >= ?A and codepoint <= ?Z) or

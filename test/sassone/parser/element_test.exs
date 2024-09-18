@@ -14,6 +14,13 @@ defmodule Sassone.Parser.ElementTest do
     assert_parse("<cổc></cổc>")
   end
 
+  test "parses element having namespaces" do
+    assert assert_parse("<ns:foo></ns:foo>") == [
+             {:start_element, {"ns", "foo", []}},
+             {:end_element, {"ns", "foo"}}
+           ]
+  end
+
   test "parses element with nested children" do
     buffer =
       remove_indents("""
