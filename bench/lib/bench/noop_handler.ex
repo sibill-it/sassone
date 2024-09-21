@@ -1,9 +1,9 @@
 defmodule Bench.NoopHandler do
   @behaviour Sassone.Handler
 
-  @impl true
+  @impl Sassone.Handler
   def handle_event(_, _, state), do: {:ok, state}
 
-  # Handler for Erlsom.
+  @doc "Handler for Erlsom"
   def handle_event(_, state), do: state
 end

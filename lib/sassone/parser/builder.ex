@@ -1,26 +1,15 @@
 defmodule Sassone.Parser.Builder do
   @moduledoc false
 
-  import Sassone.Parser.Lookahead
-  import Sassone.BufferingHelper
-  import Sassone.Emitter
-  import Sassone.Guards
-
-  alias Sassone.Emitter
-  alias Sassone.Parser.Utils
+  import Sassone.Parser.Builder.{BufferingHelper, Guards, Lookahead}
 
   defmacro __using__(options) do
-    streaming? = Keyword.fetch!(options, :streaming?)
-
-    quote do
-      @streaming unquote(streaming?)
-
-      @before_compile unquote(__MODULE__)
-    end
-  end
-
-  defmacro __before_compile__(_env) do
     quote location: :keep do
+      alias Sassone.{ParseError, Parser}
+      alias Sassone.Parser.{State, Utils}
+
+      @streaming unquote(options[:streaming?])
+
       def parse_prolog(<<buffer::bits>>, more?, original, pos, state) do
         prolog(buffer, more?, original, pos, state)
       end
@@ -53,7 +42,7 @@ defmodule Sassone.Parser.Builder do
             halt!(xml_decl(token, more?, original, pos, state))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :version})
+            {:error, %ParseError{reason: {:token, :version}, binary: original, position: pos}}
         end
       end
 
@@ -69,7 +58,7 @@ defmodule Sassone.Parser.Builder do
             halt!(xml_ver_eq("", more?, original, pos, state))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :=})
+            {:error, %ParseError{reason: {:token, :=}, binary: original, position: pos}}
         end
       end
 
@@ -85,7 +74,7 @@ defmodule Sassone.Parser.Builder do
             halt!(xml_ver_quote("", more?, original, pos, state))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :quote})
+            {:error, %ParseError{reason: {:token, :quote}, binary: original, position: pos}}
         end
       end
 
@@ -98,7 +87,7 @@ defmodule Sassone.Parser.Builder do
             halt!(xml_ver_one_dot(token, more?, original, pos, state, open_quote))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :"1."})
+            {:error, %ParseError{reason: {:token, :"1."}, binary: original, position: pos}}
         end
       end
 
@@ -117,7 +106,10 @@ defmodule Sassone.Parser.Builder do
             halt!(xml_ver_num("", more?, original, pos, state, open_quote, len))
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :version_num})
+            {
+              :error,
+              %ParseError{reason: {:token, :version_num}, binary: original, position: pos + len}
+            }
         end
       end
 
@@ -149,7 +141,7 @@ defmodule Sassone.Parser.Builder do
             halt!(encoding_decl_eq("", more?, original, pos, state, prolog))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :eq})
+            {:error, %ParseError{reason: {:token, :eq}, binary: original, position: pos}}
         end
       end
 
@@ -165,7 +157,7 @@ defmodule Sassone.Parser.Builder do
             halt!(encoding_decl_eq_quote("", more?, original, pos, state, prolog))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :quote})
+            {:error, %ParseError{reason: {:token, :quote}, binary: original, position: pos}}
         end
       end
 
@@ -183,12 +175,19 @@ defmodule Sassone.Parser.Builder do
           ^open_quote <> rest ->
             encoding = binary_part(original, pos, len)
 
-            if Utils.valid_encoding?(encoding) do
+            if Parser.valid_encoding?(encoding) do
               standalone(rest, more?, original, pos + len + 1, state, [
                 {:encoding, encoding} | prolog
               ])
             else
-              Utils.parse_error(original, pos, state, {:invalid_encoding, encoding})
+              {
+                :error,
+                %ParseError{
+                  reason: {:invalid_encoding, encoding},
+                  binary: original,
+                  position: pos
+                }
+              }
             end
 
           char <> rest
@@ -201,7 +200,10 @@ defmodule Sassone.Parser.Builder do
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :encoding_name})
+            {
+              :error,
+              %ParseError{reason: {:token, :encoding_name}, binary: original, position: pos + len}
+            }
         end
       end
 
@@ -233,7 +235,7 @@ defmodule Sassone.Parser.Builder do
             halt!(standalone_eq("", more?, original, pos, state, prolog))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :standalone})
+            {:error, %ParseError{reason: {:token, :standalone}, binary: original, position: pos}}
         end
       end
 
@@ -249,7 +251,7 @@ defmodule Sassone.Parser.Builder do
             halt!(standalone_eq_quote("", more?, original, pos, state, prolog))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :quote})
+            {:error, %ParseError{reason: {:token, :quote}, binary: original, position: pos}}
         end
       end
 
@@ -284,7 +286,7 @@ defmodule Sassone.Parser.Builder do
             halt!(standalone_bool(token, more?, original, pos, state, prolog, open_quote))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :yes_or_no})
+            {:error, %ParseError{reason: {:token, :yes_or_no}, binary: original, position: pos}}
         end
       end
 
@@ -297,7 +299,7 @@ defmodule Sassone.Parser.Builder do
             halt!(standalone_end_quote("", more?, original, pos, state, prolog, open_quote))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :quote})
+            {:error, %ParseError{reason: {:token, :quote}, binary: original, position: pos}}
         end
       end
 
@@ -313,7 +315,10 @@ defmodule Sassone.Parser.Builder do
             halt!(xml_decl_close(token, more?, original, pos, state, prolog))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :xml_decl_close})
+            {
+              :error,
+              %ParseError{reason: {:token, :xml_decl_close}, binary: original, position: pos}
+            }
         end
       end
 
@@ -346,7 +351,10 @@ defmodule Sassone.Parser.Builder do
             prolog_misc(rest, more?, original, pos + len + 3, state, prolog)
 
           "--->" <> _rest ->
-            Utils.parse_error(original, pos + len, state, {:token, :comment})
+            {
+              :error,
+              %ParseError{reason: {:token, :comment}, binary: original, position: pos + len}
+            }
 
           token in unquote(edge_ngrams("--")) when more? ->
             halt!(prolog_misc_comment(token, more?, original, pos, state, prolog, len))
@@ -362,7 +370,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               prolog,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
         end
       end
@@ -380,14 +388,21 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               prolog,
-              Utils.compute_char_len(codepoint)
+              Parser.compute_char_len(codepoint)
             )
 
           _ in [""] when more? ->
             halt!(prolog_processing_instruction("", more?, original, pos, state, prolog))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :processing_instruction})
+            {
+              :error,
+              %ParseError{
+                reason: {:token, :processing_instruction},
+                binary: original,
+                position: pos
+              }
+            }
         end
       end
 
@@ -404,7 +419,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               prolog,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           token in [""] when more? ->
@@ -413,10 +428,13 @@ defmodule Sassone.Parser.Builder do
           _ ->
             pi_name = binary_part(original, pos, len)
 
-            if Utils.valid_pi_name?(pi_name) do
+            if Parser.valid_pi_name?(pi_name) do
               prolog_pi_content(buffer, more?, original, pos + len, state, prolog, 0)
             else
-              Utils.parse_error(original, pos, state, {:invalid_pi, pi_name})
+              {
+                :error,
+                %ParseError{reason: {:invalid_pi, pi_name}, binary: original, position: pos}
+              }
             end
         end
       end
@@ -440,7 +458,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               prolog,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
         end
       end
@@ -478,7 +496,7 @@ defmodule Sassone.Parser.Builder do
             halt!(dtd_content(token, more?, original, pos, state, len, count))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :dtd_content})
+            {:error, %ParseError{reason: {:token, :dtd_content}, binary: original, position: pos}}
         end
       end
 
@@ -504,7 +522,10 @@ defmodule Sassone.Parser.Builder do
       defp dtd_misc_comment(<<buffer::bits>>, more?, original, pos, state, len) do
         lookahead buffer, @streaming do
           "--->" <> _rest ->
-            Utils.parse_error(original, pos + len, state, {:token, :comment})
+            {
+              :error,
+              %ParseError{reason: {:token, :comment}, binary: original, position: pos + len}
+            }
 
           "-->" <> rest ->
             dtd_misc(rest, more?, original, pos + len + 3, state)
@@ -522,11 +543,14 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :comment})
+            {
+              :error,
+              %ParseError{reason: {:token, :comment}, binary: original, position: pos + len}
+            }
         end
       end
 
@@ -536,13 +560,20 @@ defmodule Sassone.Parser.Builder do
             dtd_pi_name(rest, more?, original, pos, state, 1)
 
           <<codepoint::utf8>> <> rest when is_utf8_name_start_char(codepoint) ->
-            dtd_pi_name(rest, more?, original, pos, state, Utils.compute_char_len(codepoint))
+            dtd_pi_name(rest, more?, original, pos, state, Parser.compute_char_len(codepoint))
 
           token in [""] when more? ->
             halt!(dtd_processing_instruction(token, more?, original, pos, state))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :processing_instruction})
+            {
+              :error,
+              %ParseError{
+                reason: {:token, :processing_instruction},
+                binary: original,
+                position: pos
+              }
+            }
         end
       end
 
@@ -558,7 +589,7 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           token in [""] when more? ->
@@ -567,10 +598,13 @@ defmodule Sassone.Parser.Builder do
           _ ->
             pi_name = binary_part(original, pos, len)
 
-            if Utils.valid_pi_name?(pi_name) do
+            if Parser.valid_pi_name?(pi_name) do
               dtd_pi_content(buffer, more?, original, pos + len, state, 0)
             else
-              Utils.parse_error(original, pos, state, {:invalid_pi, pi_name})
+              {
+                :error,
+                %ParseError{reason: {:invalid_pi, pi_name}, binary: original, position: pos}
+              }
             end
         end
       end
@@ -593,7 +627,7 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
         end
       end
@@ -611,7 +645,7 @@ defmodule Sassone.Parser.Builder do
             halt!(element("", more?, original, pos, state))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :lt})
+            {:error, %ParseError{reason: {:token, :lt}, binary: original, position: pos}}
         end
       end
 
@@ -631,14 +665,17 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               nil,
-              Utils.compute_char_len(codepoint)
+              Parser.compute_char_len(codepoint)
             )
 
           _ in [""] when more? ->
             halt!(open_tag("", more?, original, pos, state))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :name_start_char})
+            {
+              :error,
+              %ParseError{reason: {:token, :name_start_char}, binary: original, position: pos}
+            }
         end
       end
 
@@ -660,7 +697,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               ns,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           token in unquote(utf8_binaries()) when more? ->
@@ -722,7 +759,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               attributes,
-              Utils.compute_char_len(codepoint)
+              Parser.compute_char_len(codepoint)
             )
 
           whitespace <> rest when is_whitespace(whitespace) ->
@@ -732,7 +769,8 @@ defmodule Sassone.Parser.Builder do
             halt!(sattribute(token, more?, original, pos, state, attributes))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :name_start_char})
+            {:error,
+             %ParseError{reason: {:token, :name_start_char}, binary: original, position: pos}}
         end
       end
 
@@ -752,7 +790,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               attributes,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ in [""] when more? ->
@@ -776,7 +814,7 @@ defmodule Sassone.Parser.Builder do
             halt!(attribute_eq("", more?, original, pos, state, attributes, att_name))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :eq})
+            {:error, %ParseError{reason: {:token, :eq}, binary: original, position: pos}}
         end
       end
 
@@ -803,7 +841,7 @@ defmodule Sassone.Parser.Builder do
             halt!(attribute_quote("", more?, original, pos, state, attributes, att_name))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :quote})
+            {:error, %ParseError{reason: {:token, :quote}, binary: original, position: pos}}
         end
       end
 
@@ -927,7 +965,7 @@ defmodule Sassone.Parser.Builder do
             )
 
           <<codepoint::utf8>> <> rest ->
-            len = len + Utils.compute_char_len(codepoint)
+            len = len + Parser.compute_char_len(codepoint)
 
             att_value(
               rest,
@@ -943,7 +981,10 @@ defmodule Sassone.Parser.Builder do
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :att_value})
+            {
+              :error,
+              %ParseError{reason: {:token, :att_value}, binary: original, position: pos + len}
+            }
         end
       end
 
@@ -1001,7 +1042,7 @@ defmodule Sassone.Parser.Builder do
               open_quote,
               att_name,
               acc,
-              Utils.compute_char_len(codepoint)
+              Parser.compute_char_len(codepoint)
             )
 
           _ in [""] when more? ->
@@ -1021,7 +1062,10 @@ defmodule Sassone.Parser.Builder do
             )
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :name_start_char})
+            {
+              :error,
+              %ParseError{reason: {:token, :name_start_char}, binary: original, position: pos}
+            }
         end
       end
 
@@ -1069,7 +1113,7 @@ defmodule Sassone.Parser.Builder do
             )
 
           <<codepoint::utf8>> <> rest when is_utf8_name_char(codepoint) ->
-            len = len + Utils.compute_char_len(codepoint)
+            len = len + Parser.compute_char_len(codepoint)
 
             att_value_entity_ref(
               rest,
@@ -1086,7 +1130,7 @@ defmodule Sassone.Parser.Builder do
 
           ";" <> rest ->
             name = binary_part(original, pos, len)
-            converted = Emitter.convert_entity_reference(name, state)
+            converted = Parser.convert_entity_reference(name, state)
             acc = [acc | converted]
 
             att_value(
@@ -1119,7 +1163,10 @@ defmodule Sassone.Parser.Builder do
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :entity_ref})
+            {
+              :error,
+              %ParseError{reason: {:token, :entity_ref}, binary: original, position: pos + len}
+            }
         end
       end
 
@@ -1184,7 +1231,10 @@ defmodule Sassone.Parser.Builder do
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :char_ref})
+            {
+              :error,
+              %ParseError{reason: {:token, :char_ref}, binary: original, position: pos + len}
+            }
         end
       end
 
@@ -1249,7 +1299,8 @@ defmodule Sassone.Parser.Builder do
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :char_ref})
+            {:error,
+             %ParseError{reason: {:token, :char_ref}, binary: original, position: pos + len}}
         end
       end
 
@@ -1277,10 +1328,10 @@ defmodule Sassone.Parser.Builder do
             halt!(element_content(token, more?, original, pos, state))
 
           <<codepoint::utf8>> <> rest ->
-            chardata(rest, more?, original, pos, state, "", Utils.compute_char_len(codepoint))
+            chardata(rest, more?, original, pos, state, "", Parser.compute_char_len(codepoint))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :content})
+            {:error, %ParseError{reason: {:token, :content}, binary: original, position: pos}}
         end
       end
 
@@ -1297,7 +1348,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               nil,
-              Utils.compute_char_len(codepoint)
+              Parser.compute_char_len(codepoint)
             )
 
           "/" <> rest ->
@@ -1316,7 +1367,7 @@ defmodule Sassone.Parser.Builder do
             halt!(element_content_rest(token, more?, original, pos, state))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :lt})
+            {:error, %ParseError{reason: {:token, :lt}, binary: original, position: pos}}
         end
       end
 
@@ -1349,11 +1400,11 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :"]]"})
+            {:error, %ParseError{reason: {:token, :"]]"}, binary: original, position: pos + len}}
         end
       end
 
@@ -1391,14 +1442,15 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               "",
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ in [""] when more? ->
             halt!(chardata_whitespace("", more?, original, pos, state, len))
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :chardata})
+            {:error,
+             %ParseError{reason: {:token, :chardata}, binary: original, position: pos + len}}
         end
       end
 
@@ -1436,7 +1488,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               acc,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ in [""] when more? ->
@@ -1455,7 +1507,8 @@ defmodule Sassone.Parser.Builder do
             end
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :chardata})
+            {:error,
+             %ParseError{reason: {:token, :chardata}, binary: original, position: pos + len}}
         end
       end
 
@@ -1475,7 +1528,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               acc,
-              Utils.compute_char_len(codepoint)
+              Parser.compute_char_len(codepoint)
             )
 
           "#x" <> rest ->
@@ -1485,7 +1538,7 @@ defmodule Sassone.Parser.Builder do
             element_char_dec_ref(rest, more?, original, pos + 1, state, acc, 0)
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :reference})
+            {:error, %ParseError{reason: {:token, :reference}, binary: original, position: pos}}
         end
       end
 
@@ -1502,19 +1555,22 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               acc,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           ";" <> rest ->
             name = binary_part(original, pos, len)
-            char = Emitter.convert_entity_reference(name, state)
+            char = Parser.convert_entity_reference(name, state)
             chardata(rest, more?, original, pos + len + 1, state, [acc | char], 0)
 
           _ in [""] when more? ->
             halt!(element_entity_ref("", more?, original, pos, state, acc, len))
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :entity_ref})
+            {
+              :error,
+              %ParseError{reason: {:token, :entity_ref}, binary: original, position: pos + len}
+            }
         end
       end
 
@@ -1522,7 +1578,10 @@ defmodule Sassone.Parser.Builder do
         lookahead buffer, @streaming do
           ";" <> rest ->
             if len == 0 do
-              Utils.parse_error(original, pos, state, {:token, :char_ref})
+              {
+                :error,
+                %ParseError{reason: {:token, :char_ref}, binary: original, position: pos}
+              }
             else
               char = original |> binary_part(pos, len) |> String.to_integer(10)
 
@@ -1536,7 +1595,10 @@ defmodule Sassone.Parser.Builder do
             halt!(element_char_dec_ref("", more?, original, pos, state, acc, len))
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :char_ref})
+            {
+              :error,
+              %ParseError{reason: {:token, :char_ref}, binary: original, position: pos + len}
+            }
         end
       end
 
@@ -1544,7 +1606,7 @@ defmodule Sassone.Parser.Builder do
         lookahead buffer, @streaming do
           ";" <> rest ->
             if len == 0 do
-              Utils.parse_error(original, pos, state, [])
+              {:error, %ParseError{reason: [], binary: original, position: pos}}
             else
               char = original |> binary_part(pos, len) |> String.to_integer(16)
 
@@ -1558,7 +1620,8 @@ defmodule Sassone.Parser.Builder do
             halt!(element_char_hex_ref("", more?, original, pos, state, acc, len))
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :char_ref})
+            {:error,
+             %ParseError{reason: {:token, :char_ref}, binary: original, position: pos + len}}
         end
       end
 
@@ -1577,11 +1640,18 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              Utils.compute_char_len(codepoint)
+              Parser.compute_char_len(codepoint)
             )
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :processing_instruction})
+            {
+              :error,
+              %ParseError{
+                reason: {:token, :processing_instruction},
+                binary: original,
+                position: pos
+              }
+            }
         end
       end
 
@@ -1600,13 +1670,13 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ ->
             pi_name = binary_part(original, pos, len)
 
-            if Utils.valid_pi_name?(pi_name) do
+            if Parser.valid_pi_name?(pi_name) do
               element_processing_instruction_content(
                 buffer,
                 more?,
@@ -1617,7 +1687,8 @@ defmodule Sassone.Parser.Builder do
                 0
               )
             else
-              Utils.parse_error(original, pos, state, {:invalid_pi, pi_name})
+              {:error,
+               %ParseError{reason: {:invalid_pi, pi_name}, binary: original, position: pos}}
             end
         end
       end
@@ -1680,11 +1751,18 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               name,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :processing_instruction})
+            {
+              :error,
+              %ParseError{
+                reason: {:token, :processing_instruction},
+                binary: original,
+                position: pos + len
+              }
+            }
         end
       end
 
@@ -1697,7 +1775,8 @@ defmodule Sassone.Parser.Builder do
             halt!(element_content_comment(token, more?, original, pos, state, len))
 
           "--->" <> _rest ->
-            Utils.parse_error(original, pos + len, state, {:token, :comment})
+            {:error,
+             %ParseError{reason: {:token, :comment}, binary: original, position: pos + len}}
 
           char <> rest when is_ascii(char) ->
             element_content_comment(rest, more?, original, pos, state, len + 1)
@@ -1709,11 +1788,12 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :comment})
+            {:error,
+             %ParseError{reason: {:token, :comment}, binary: original, position: pos + len}}
         end
       end
 
@@ -1726,14 +1806,14 @@ defmodule Sassone.Parser.Builder do
             halt!(close_tag_name(token, more?, original, pos, state, close_ns, 0, 0))
 
           <<codepoint::utf8>> <> rest when is_utf8_name_start_char(codepoint) ->
-            len = Utils.compute_char_len(codepoint)
+            len = Parser.compute_char_len(codepoint)
             close_tag_name(rest, more?, original, pos, state, close_ns, len, len)
 
           _ in [""] when more? ->
             halt!(close_tag_name("", more?, original, pos, state, close_ns, 0, 0))
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :end_tag})
+            {:error, %ParseError{reason: {:token, :end_tag}, binary: original, position: pos}}
         end
       end
 
@@ -1763,7 +1843,14 @@ defmodule Sassone.Parser.Builder do
                 end
               end
             else
-              Utils.parse_error(original, pos, state, {:wrong_closing_tag, open_tag, ending_tag})
+              {
+                :error,
+                %ParseError{
+                  reason: {:wrong_closing_tag, open_tag, ending_tag},
+                  binary: original,
+                  position: pos
+                }
+              }
             end
 
           char <> rest when is_ascii_name_char(char) ->
@@ -1776,7 +1863,7 @@ defmodule Sassone.Parser.Builder do
             halt!(close_tag_name(token, more?, original, pos, state, close_ns, len, copy_to))
 
           <<codepoint::utf8>> <> rest when is_utf8_name_char(codepoint) ->
-            char_len = Utils.compute_char_len(codepoint)
+            char_len = Parser.compute_char_len(codepoint)
 
             close_tag_name(
               rest,
@@ -1793,7 +1880,8 @@ defmodule Sassone.Parser.Builder do
             halt!(close_tag_name("", more?, original, pos, state, close_ns, len, copy_to))
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :end_tag})
+            {:error,
+             %ParseError{reason: {:token, :end_tag}, binary: original, position: pos + len}}
         end
       end
 
@@ -1815,7 +1903,7 @@ defmodule Sassone.Parser.Builder do
             element_misc_rest(rest, more?, original, pos + 1, state)
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :misc})
+            {:error, %ParseError{reason: {:token, :misc}, binary: original, position: pos}}
         end
       end
 
@@ -1831,7 +1919,7 @@ defmodule Sassone.Parser.Builder do
             element_misc_pi(rest, more?, original, pos + 1, state)
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :misc})
+            {:error, %ParseError{reason: {:token, :misc}, binary: original, position: pos}}
         end
       end
 
@@ -1844,7 +1932,7 @@ defmodule Sassone.Parser.Builder do
             element_misc_comment_char(rest, more?, original, pos + 2, state, 0)
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :--})
+            {:error, %ParseError{reason: {:token, :--}, binary: original, position: pos}}
         end
       end
 
@@ -1854,7 +1942,8 @@ defmodule Sassone.Parser.Builder do
             halt!(element_misc_comment_char(token, more?, original, pos, state, len))
 
           "--->" <> _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :comment})
+            {:error,
+             %ParseError{reason: {:token, :comment}, binary: original, position: pos + len}}
 
           "-->" <> rest ->
             element_misc(rest, more?, original, pos + len + 3, state)
@@ -1869,11 +1958,11 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :"-->"})
+            {:error, %ParseError{reason: {:token, :"-->"}, binary: original, position: pos + len}}
         end
       end
 
@@ -1892,11 +1981,18 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              Utils.compute_char_len(codepoint)
+              Parser.compute_char_len(codepoint)
             )
 
           _ ->
-            Utils.parse_error(original, pos, state, {:token, :processing_instruction})
+            {
+              :error,
+              %ParseError{
+                reason: {:token, :processing_instruction},
+                binary: original,
+                position: pos
+              }
+            }
         end
       end
 
@@ -1915,16 +2011,16 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ ->
             name = binary_part(original, pos, len)
 
-            if Utils.valid_pi_name?(name) do
+            if Parser.valid_pi_name?(name) do
               element_misc_pi_content(buffer, more?, original, pos + len, state, 0)
             else
-              Utils.parse_error(original, pos, state, {:invalid_pi, name})
+              {:error, %ParseError{reason: {:invalid_pi, name}, binary: original, position: pos}}
             end
         end
       end
@@ -1947,11 +2043,18 @@ defmodule Sassone.Parser.Builder do
               original,
               pos,
               state,
-              len + Utils.compute_char_len(codepoint)
+              len + Parser.compute_char_len(codepoint)
             )
 
           _ ->
-            Utils.parse_error(original, pos + len, state, {:token, :processing_instruction})
+            {
+              :error,
+              %ParseError{
+                reason: {:token, :processing_instruction},
+                binary: original,
+                position: pos + len
+              }
+            }
         end
       end
 
@@ -1969,6 +2072,25 @@ defmodule Sassone.Parser.Builder do
         end
       else
         defp maybe_trim(_, binary, pos), do: {binary, pos}
+      end
+
+      defp emit(event, data, %State{} = state, on_halt) do
+        case state.handler.handle_event(event, data, state.user_state) do
+          {:ok, user_state} ->
+            {:cont, %State{state | user_state: user_state}}
+
+          {:stop, user_state} ->
+            {:ok, %State{state | user_state: user_state}}
+
+          {:halt, user_state} ->
+            {:halt, %State{state | user_state: user_state}, on_halt}
+
+          {:cont, handler, user_state} ->
+            {:cont, %State{state | handler: handler, user_state: user_state}}
+
+          other ->
+            {:error, %ParseError{reason: {:bad_return, {event, other}}}}
+        end
       end
     end
   end

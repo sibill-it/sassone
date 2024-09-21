@@ -13,7 +13,7 @@ defmodule SassoneTest.StackHandler do
 
   @behaviour Sassone.Handler
 
-  @impl true
+  @impl Sassone.Handler
   def handle_event(event_type, event_data, acc) do
     {:ok, [{event_type, event_data} | acc]}
   end
@@ -24,58 +24,100 @@ defmodule SassoneTest.ControlHandler do
 
   @behaviour Sassone.Handler
 
-  @impl true
-  def handle_event(event_type, _, {event_type, returning}) do
-    returning
-  end
+  @impl Sassone.Handler
+  def handle_event(event, _data, {event, returning}), do: returning
 
-  def handle_event(event_type, event_data, {{event_type, event_data}, returning}) do
-    returning
-  end
+  @impl Sassone.Handler
+  def handle_event(event, data, {{event, data}, returning}), do: returning
 
-  def handle_event(_, _, state) do
-    {:ok, state}
-  end
+  @impl Sassone.Handler
+  def handle_event(_event, _data, state), do: {:ok, state}
 end
 
-# For docs test
+defmodule SassoneTest.PrologHandler do
+  @moduledoc false
+
+  @behaviour Sassone.Handler
+
+  @impl Sassone.Handler
+  def handle_event(:start_document, prolog, _state), do: {:stop, prolog}
+end
 
 defmodule MyTestHandler do
   @moduledoc false
 
   @behaviour Sassone.Handler
 
-  def handle_event(:start_document, prolog, state) do
-    {:ok, [{:start_document, prolog} | state]}
+  @impl Sassone.Handler
+  def handle_event(:start_document, data, state), do: {:ok, [{:start_document, data} | state]}
+
+  @impl Sassone.Handler
+  def handle_event(:end_document, _data, state), do: {:ok, [{:end_document} | state]}
+
+  @impl Sassone.Handler
+  def handle_event(:start_element, {namespace, name, attributes}, state),
+    do: {:ok, [{:start_element, namespace, name, attributes} | state]}
+
+  @impl Sassone.Handler
+  def handle_event(:end_element, name, state), do: {:ok, [{:end_element, name} | state]}
+
+  @impl Sassone.Handler
+  def handle_event(:characters, chars, state), do: {:ok, [{:chacters, chars} | state]}
+end
+
+defmodule Struct do
+  @moduledoc false
+
+  @derive {Sassone.Builder, name: :test, attributes: [:foo], children: [:bar]}
+  defstruct [:foo, :bar]
+end
+
+defmodule UnderivedStruct do
+  @moduledoc false
+
+  defstruct [:foo, :bar]
+end
+
+defmodule Post do
+  @moduledoc false
+
+  import Sassone.XML
+
+  @derive {Sassone.Builder,
+           name: :post,
+           children: [
+             :categories,
+             categories: &__MODULE__.build_cats/1,
+             categories: {__MODULE__, :build_categories}
+           ]}
+  defstruct [:categories]
+
+  def build_categories(categories) do
+    element(nil, "categories", [], categories)
   end
 
-  def handle_event(:end_document, _data, state) do
-    {:ok, [{:end_document} | state]}
+  def build_cats(categories) do
+    element(nil, "cats", [], categories)
   end
+end
 
-  def handle_event(:start_element, {namespace, name, attributes}, state) do
-    {:ok, [{:start_element, namespace, name, attributes} | state]}
-  end
+defmodule Category do
+  @moduledoc false
 
-  def handle_event(:end_element, name, state) do
-    {:ok, [{:end_element, name} | state]}
-  end
+  @derive {Sassone.Builder, name: :category, attributes: [:name]}
 
-  def handle_event(:characters, chars, state) do
-    {:ok, [{:chacters, chars} | state]}
-  end
+  defstruct [:name]
 end
 
 defmodule Person do
   @moduledoc false
 
+  import Sassone.XML
+
   @derive {
     Sassone.Builder,
     name: "person", attributes: [:gender], children: [:name, emails: &__MODULE__.build_emails/1]
   }
-
-  import Sassone.XML
-
   defstruct [:name, :gender, emails: []]
 
   def build_emails(emails) do

@@ -36,6 +36,7 @@ defmodule Sassone.MixProject do
   defp deps() do
     [
       {:credo, "~> 1.0", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0", only: :dev, runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:stream_data, "~> 1.0", only: [:dev, :test]}
     ]

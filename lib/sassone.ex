@@ -109,12 +109,9 @@ defmodule Sassone do
 
   @compile {:inline, do_transform_stream: 4}
 
-  alias Sassone.{
-    Encoder,
-    Handler.Accumulating,
-    Parser,
-    State
-  }
+  alias Sassone.{Encoder, Handler, ParseError, Parser, Prolog, XML}
+  alias Sassone.Handler.Accumulating
+  alias Sassone.Parser.State
 
   @doc ~S"""
   Parses XML binary data.
@@ -165,26 +162,18 @@ defmodule Sassone do
         {:start_document, [version: "1.0"]}]}
   """
 
-  @spec parse_string(
-          data :: binary,
-          handler :: module(),
-          initial_state :: term(),
-          options :: Keyword.t()
-        ) ::
+  @spec parse_string(String.t(), Handler.t(), Handler.state(), options :: Keyword.t()) ::
           {:ok, state :: term()}
-          | {:halt, state :: term(), rest :: String.t()}
-          | {:error, exception :: Sassone.ParseError.t()}
+          | {:halt, Handler.state(), rest :: String.t()}
+          | {:error, ParseError.t()}
   def parse_string(data, handler, initial_state, options \\ [])
       when is_binary(data) and is_atom(handler) do
-    expand_entity = Keyword.get(options, :expand_entity, :keep)
-    cdata_as_characters = Keyword.get(options, :cdata_as_characters, true)
-
     state = %State{
       prolog: nil,
       handler: handler,
       user_state: initial_state,
-      expand_entity: expand_entity,
-      cdata_as_characters: cdata_as_characters,
+      expand_entity: options[:expand_entity] || :keep,
+      cdata_as_characters: Keyword.get(options, :cdata_as_characters, true),
       character_data_max_length: :infinity
     }
 
@@ -260,15 +249,10 @@ defmodule Sassone do
 
   """
 
-  @spec parse_stream(
-          stream :: Enumerable.t(),
-          handler :: module(),
-          initial_state :: term(),
-          options :: Keyword.t()
-        ) ::
+  @spec parse_stream(Enumerable.t(), Handler.t(), Handler.state(), options :: Keyword.t()) ::
           {:ok, state :: term()}
           | {:halt, state :: term(), rest :: String.t()}
-          | {:error, exception :: Sassone.ParseError.t()}
+          | {:error, exception :: ParseError.t()}
 
   def parse_stream(stream, handler, initial_state, options \\ []) do
     expand_entity = Keyword.get(options, :expand_entity, :keep)
@@ -355,8 +339,7 @@ defmodule Sassone do
   * `:character_data_max_length` - tells the parser to emit the `:characters` event when its length exceeds the specified
     number. The option is useful when the tag being parsed containing a very large chunk of data. Defaults to `:infinity`.
   """
-  @spec stream_events(in_stream :: Enumerable.t(), options :: Keyword.t()) ::
-          out_stream :: Enumerable.t()
+  @spec stream_events(Enumerable.t(), options :: Keyword.t()) :: Enumerable.t()
   def stream_events(stream, options \\ []) do
     expand_entity = Keyword.get(options, :expand_entity, :keep)
     character_data_max_length = Keyword.get(options, :character_data_max_length, :infinity)
@@ -378,13 +361,11 @@ defmodule Sassone do
     |> Stream.transform(init, &transform_stream/2)
   end
 
-  defp transform_stream(:end_of_stream, {cont_fun, state}) do
-    do_transform_stream(<<>>, false, cont_fun, state)
-  end
+  defp transform_stream(:end_of_stream, {cont_fun, state}),
+    do: do_transform_stream(<<>>, false, cont_fun, state)
 
-  defp transform_stream(buffer, {cont_fun, state}) do
-    do_transform_stream(buffer, true, cont_fun, state)
-  end
+  defp transform_stream(buffer, {cont_fun, state}),
+    do: do_transform_stream(buffer, true, cont_fun, state)
 
   defp do_transform_stream(buffer, more?, cont_fun, state) do
     case cont_fun.(buffer, more?, state) do
@@ -415,10 +396,7 @@ defmodule Sassone do
       iex> Sassone.encode!(root, prolog)
       "<?xml version=\\"1.0\\" encoding=\\"UTF-8\\"?><foo foo=\\"bar\\">bar</foo>"
   """
-
-  @spec encode!(root :: Sassone.XML.element(), prolog :: Sassone.Prolog.t() | Keyword.t() | nil) ::
-          String.t()
-
+  @spec encode!(XML.element(), Prolog.t() | Keyword.t() | nil) :: String.t()
   def encode!(root, prolog \\ nil) do
     root
     |> Encoder.encode_to_iodata(prolog)
@@ -445,12 +423,6 @@ defmodule Sassone do
       ]
 
   """
-  @spec encode_to_iodata!(
-          root :: Sassone.XML.element(),
-          prolog :: Sassone.Prolog.t() | Keyword.t() | nil
-        ) :: iodata()
-
-  def encode_to_iodata!(root, prolog \\ nil) do
-    Encoder.encode_to_iodata(root, prolog)
-  end
+  @spec encode_to_iodata!(XML.element(), Prolog.t() | Keyword.t() | nil) :: iodata()
+  def encode_to_iodata!(root, prolog \\ nil), do: Encoder.encode_to_iodata(root, prolog)
 end

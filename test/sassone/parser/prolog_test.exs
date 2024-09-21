@@ -1,13 +1,7 @@
 defmodule Sassone.Parser.PrologTest do
   use SassoneTest.ParsingCase, async: true
 
-  alias SassoneTest.ControlHandler
-
-  defmodule PrologHandler do
-    def handle_event(:start_document, prolog, _) do
-      {:stop, prolog}
-    end
-  end
+  alias SassoneTest.{ControlHandler, PrologHandler}
 
   describe "welformed XML prologs" do
     test "with all properties declared" do

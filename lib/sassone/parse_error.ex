@@ -10,15 +10,8 @@ defmodule Sassone.ParseError do
           | {:invalid_encoding, encoding :: String.t()}
           | {:bad_return, {event :: atom(), return :: term()}}
 
-  @type t() :: %__MODULE__{
-          reason: reason()
-        }
-
-  defexception [
-    :reason,
-    :binary,
-    :position
-  ]
+  @type t() :: %__MODULE__{reason: reason(), binary: String.t(), position: non_neg_integer()}
+  defexception [:reason, :binary, :position]
 
   def message(%__MODULE__{} = exception) do
     format_message(

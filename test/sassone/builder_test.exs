@@ -3,26 +3,27 @@ defmodule Sassone.BuilderTest do
   use ExUnitProperties
 
   import Sassone.Builder, only: [build: 1]
+  import Sassone.XML
 
   doctest Sassone.Builder
 
   test "builds pre-built simple-form element" do
-    element = Sassone.XML.element(nil, :foo, [], [])
+    element = element(nil, :foo, [], [])
     assert build(element) == element
 
-    element = Sassone.XML.empty_element(nil, :foo, [])
+    element = empty_element(nil, :foo, [])
     assert build(element) == element
 
-    characters = Sassone.XML.characters("foo")
+    characters = characters("foo")
     assert build(characters) == characters
 
-    cdata = Sassone.XML.cdata("foo")
+    cdata = cdata("foo")
     assert build(cdata) == cdata
 
-    reference = Sassone.XML.reference(:entity, "foo")
+    reference = reference(:entity, "foo")
     assert build(reference) == reference
 
-    comment = Sassone.XML.comment("foo")
+    comment = comment("foo")
     assert build(comment) == comment
 
     assert_raise Protocol.UndefinedError, fn -> build({}) end
@@ -42,16 +43,6 @@ defmodule Sassone.BuilderTest do
     assert build(datetime) == {:characters, DateTime.to_iso8601(datetime)}
   end
 
-  defmodule Struct do
-    @derive {Sassone.Builder, name: :test, attributes: [:foo], children: [:bar]}
-
-    defstruct [:foo, :bar]
-  end
-
-  defmodule UnderivedStruct do
-    defstruct [:foo, :bar]
-  end
-
   test "builds element from struct" do
     struct = %Struct{foo: "foo", bar: "bar"}
     assert build(struct) == {nil, "test", [{"foo", "foo"}], ["bar"]}
@@ -63,36 +54,6 @@ defmodule Sassone.BuilderTest do
 
     underived_struct = %UnderivedStruct{}
     assert_raise Protocol.UndefinedError, fn -> build(underived_struct) end
-  end
-
-  defmodule Post do
-    @derive {Sassone.Builder,
-             name: :post,
-             children: [
-               :categories,
-               categories: &__MODULE__.build_cats/1,
-               categories: {__MODULE__, :build_categories}
-             ]}
-
-    defstruct [:categories]
-
-    def build_categories(categories) do
-      import Sassone.XML
-
-      element(nil, "categories", [], categories)
-    end
-
-    def build_cats(categories) do
-      import Sassone.XML
-
-      element(nil, "cats", [], categories)
-    end
-  end
-
-  defmodule Category do
-    @derive {Sassone.Builder, name: :category, attributes: [:name]}
-
-    defstruct [:name]
   end
 
   test "builds structs with custom transformer" do

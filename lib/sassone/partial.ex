@@ -1,6 +1,4 @@
 defmodule Sassone.Partial do
-  alias Sassone.Parser
-
   @moduledoc ~S"""
   Supports parsing an XML document partially. This module is useful when
   the XML document cannot be turned into a `Stream` e.g over sockets.
@@ -21,37 +19,26 @@ defmodule Sassone.Partial do
 
   """
 
+  alias Sassone.{Handler, Parser}
+  alias Sassone.Parser.State
+
+  @opaque t() :: %__MODULE__{context_fun: function(), state: term()}
   @enforce_keys [:context_fun, :state]
   defstruct @enforce_keys
 
-  @opaque t() :: %__MODULE__{
-            context_fun: function(),
-            state: term()
-          }
-
-  @doc """
-  Builds up a `Sassone.Partial`, which can be used for later parsing.
-  """
-
-  @spec new(
-          handler :: module(),
-          initial_state :: term(),
-          options :: Keyword.t()
-        ) :: {:ok, partial :: t()} | {:error, exception :: Sassone.ParseError.t()}
+  @doc "Builds up a `Sassone.Partial`, which can be used for later parsing."
+  @spec new(Handler.t(), Handler.state(), options :: Keyword.t()) ::
+          {:ok, partial :: t()} | {:error, exception :: Sassone.ParseError.t()}
 
   def new(handler, initial_state, options \\ [])
       when is_atom(handler) do
-    expand_entity = Keyword.get(options, :expand_entity, :keep)
-    character_data_max_length = Keyword.get(options, :character_data_max_length, :infinity)
-    cdata_as_characters = Keyword.get(options, :cdata_as_characters, true)
-
-    state = %Sassone.State{
+    state = %State{
       prolog: nil,
       handler: handler,
       user_state: initial_state,
-      expand_entity: expand_entity,
-      cdata_as_characters: cdata_as_characters,
-      character_data_max_length: character_data_max_length
+      expand_entity: options[:expand_entity] || :keep,
+      cdata_as_characters: Keyword.get(options, :cdata_as_characters, true),
+      character_data_max_length: options[:character_data_max_length] || :infinity
     }
 
     with {:halted, context_fun, state} <- Parser.Stream.parse_prolog(<<>>, true, <<>>, 0, state) do
@@ -149,5 +136,5 @@ defmodule Sassone.Partial do
 
   @spec set_user_state(partial :: t(), user_state :: term()) :: partial :: t()
   defp set_user_state(%__MODULE__{state: state} = partial, user_state),
-    do: %{partial | state: %{state | user_state: user_state}}
+    do: %__MODULE__{partial | state: %{state | user_state: user_state}}
 end

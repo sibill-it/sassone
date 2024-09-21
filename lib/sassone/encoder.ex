@@ -1,6 +1,8 @@
 defmodule Sassone.Encoder do
   @moduledoc false
 
+  alias Sassone.Prolog
+
   def encode_to_iodata(root, prolog) do
     prolog = prolog(prolog)
     element = element(root)
@@ -8,7 +10,7 @@ defmodule Sassone.Encoder do
     [prolog | element]
   end
 
-  defp prolog(%Sassone.Prolog{} = prolog) do
+  defp prolog(%Prolog{} = prolog) do
     [
       ~c"<?xml",
       version(prolog.version),
@@ -20,58 +22,41 @@ defmodule Sassone.Encoder do
 
   defp prolog(prolog) when is_list(prolog) do
     prolog
-    |> Sassone.Prolog.from_keyword()
+    |> Prolog.from_keyword()
     |> prolog()
   end
 
   defp prolog(nil), do: []
 
-  defp version(version) when is_binary(version) do
-    [?\s, ~c"version", ?=, ?", version, ?"]
-  end
+  defp version(version), do: [?\s, ~c"version", ?=, ?", version, ?"]
 
   defp encoding(nil), do: []
+  defp encoding(:utf8), do: [?\s, ~c"encoding", ?=, ?", ~c"utf-8", ?"]
 
-  defp encoding(:utf8) do
-    [?\s, ~c"encoding", ?=, ?", ~c"utf-8", ?"]
-  end
+  defp encoding(encoding) when encoding in ["UTF-8", "utf-8"],
+    do: [?\s, ~c"encoding", ?=, ?", ~c(#{encoding}), ?"]
 
-  defp encoding(encoding) when encoding in ["UTF-8", "utf-8"] do
-    [?\s, ~c"encoding", ?=, ?", ~c(#{encoding}), ?"]
-  end
+  defp standalone(true), do: [?\s, ~c"standalone", ?=, ?", "yes", ?"]
+  defp standalone(_standalone), do: []
 
-  defp standalone(nil), do: []
+  defp element({ns, tag_name, attributes, []}), do: [start_tag(ns, tag_name, attributes), ?/, ?>]
 
-  defp standalone(true) do
-    [?\s, ~c"standalone", ?=, ?", "yes", ?"]
-  end
-
-  defp element({ns, tag_name, attributes, []}) do
-    [start_tag(ns, tag_name, attributes), ?/, ?>]
-  end
-
-  defp element({ns, tag_name, attributes, contents}) do
+  defp element({ns, tag_name, attributes, content}) do
     [
       start_tag(ns, tag_name, attributes),
       ?>,
-      content(contents),
-      end_tag(ns, tag_name, contents)
+      content(content),
+      end_tag(ns, tag_name, content)
     ]
   end
 
-  defp start_tag(nil, tag_name, attributes) do
-    [?<, tag_name | attributes(attributes)]
-  end
-
-  defp start_tag(ns, tag_name, attributes) do
-    [?<, ns, ?:, tag_name | attributes(attributes)]
-  end
+  defp start_tag(nil, tag_name, attributes), do: [?<, tag_name | attributes(attributes)]
+  defp start_tag(ns, tag_name, attributes), do: [?<, ns, ?:, tag_name | attributes(attributes)]
 
   defp attributes([]), do: []
 
-  defp attributes([{name, value} | attributes]) do
-    [?\s, name, ?=, ?", escape(value, 0, value), ?" | attributes(attributes)]
-  end
+  defp attributes([{name, value} | attributes]),
+    do: [?\s, name, ?=, ?", escape(value, 0, value), ?" | attributes(attributes)]
 
   defp content([]), do: []
 
@@ -103,73 +88,33 @@ defmodule Sassone.Encoder do
     [element(element) | content(elements)]
   end
 
-  defp end_tag(nil, tag_name, _other) do
-    [?<, ?/, tag_name, ?>]
+  defp end_tag(nil, tag_name, _other), do: [?<, ?/, tag_name, ?>]
+  defp end_tag(ns, tag_name, _other), do: [?<, ?/, ns, ?:, tag_name, ?>]
+
+  defp characters(characters), do: escape(characters, 0, characters)
+
+  escapes = [{?<, ~c"&lt;"}, {?>, ~c"&gt;"}, {?&, ~c"&amp;"}, {?", ~c"&quot;"}, {?', ~c"&apos;"}]
+
+  for {match, insert} <- escapes do
+    defp escape(<<unquote(match), rest::bits>>, len, original),
+      do: [binary_part(original, 0, len), unquote(insert) | escape(rest, 0, rest)]
   end
 
-  defp end_tag(ns, tag_name, _other) do
-    [?<, ?/, ns, ?:, tag_name, ?>]
-  end
+  defp escape(<<>>, _len, original), do: original
 
-  defp characters(characters) do
-    escape(characters, 0, characters)
-  end
+  defp escape(<<_, rest::bits>>, len, original), do: escape(rest, len + 1, original)
 
-  @escapes [
-    {?<, ~c"&lt;"},
-    {?>, ~c"&gt;"},
-    {?&, ~c"&amp;"},
-    {?", ~c"&quot;"},
-    {?', ~c"&apos;"}
-  ]
+  defp cdata(characters), do: [~c"<![CDATA[", characters | ~c"]]>"]
 
-  for {match, insert} <- @escapes do
-    defp escape(<<unquote(match), rest::bits>>, len, original) do
-      [binary_part(original, 0, len), unquote(insert) | escape(rest, 0, rest)]
-    end
-  end
+  defp reference({:entity, reference}), do: [?&, reference, ?;]
+  defp reference({:hexadecimal, reference}), do: [?&, ?x, Integer.to_string(reference, 16), ?;]
+  defp reference({:decimal, reference}), do: [?&, ?x, Integer.to_string(reference, 10), ?;]
 
-  defp escape(<<>>, _len, original) do
-    original
-  end
+  defp comment(comment), do: [~c"<!--", escape_comment(comment, comment) | ~c"-->"]
 
-  defp escape(<<_, rest::bits>>, len, original) do
-    escape(rest, len + 1, original)
-  end
+  defp escape_comment(<<?->>, original), do: [original, ?\s]
+  defp escape_comment(<<>>, original), do: original
+  defp escape_comment(<<_char, rest::bits>>, original), do: escape_comment(rest, original)
 
-  defp cdata(characters) do
-    [~c"<![CDATA[", characters | ~c"]]>"]
-  end
-
-  defp reference({:entity, reference}) do
-    [?&, reference, ?;]
-  end
-
-  defp reference({:hexadecimal, reference}) do
-    [?&, ?x, Integer.to_string(reference, 16), ?;]
-  end
-
-  defp reference({:decimal, reference}) do
-    [?&, ?x, Integer.to_string(reference, 10), ?;]
-  end
-
-  defp comment(comment) do
-    [~c"<!--", escape_comment(comment, comment) | ~c"-->"]
-  end
-
-  defp escape_comment(<<?->>, original) do
-    [original, ?\s]
-  end
-
-  defp escape_comment(<<>>, original) do
-    original
-  end
-
-  defp escape_comment(<<_char, rest::bits>>, original) do
-    escape_comment(rest, original)
-  end
-
-  defp processing_instruction(name, content) do
-    [~c"<?", name, ?\s, content | ~c"?>"]
-  end
+  defp processing_instruction(name, content), do: [~c"<?", name, ?\s, content | ~c"?>"]
 end

@@ -1,4 +1,4 @@
-defmodule Sassone.Parser.Lookahead do
+defmodule Sassone.Parser.Builder.Lookahead do
   @moduledoc false
 
   def edge_ngrams(word) do
@@ -36,28 +36,24 @@ defmodule Sassone.Parser.Lookahead do
     end
   end
 
-  defp build_clause([{:when, _, [left, guards]}], code, streaming?) do
-    case left do
-      # "in" is exclusively used in streaming.
-      {:in, _, [token_var, tokens]} ->
-        if streaming? do
-          Enum.flat_map(tokens, fn token ->
-            quote do
-              unquote(token) when unquote(guards) ->
-                unquote(token_var) = unquote(token)
-                unquote(code)
-            end
-          end)
-        else
-          []
-        end
+  # "in" is exclusively used in streaming.
+  defp build_clause([{:when, _, [{:in, _, [token_var, tokens]}, guards]}], code, true) do
+    Enum.flat_map(tokens, fn token ->
+      quote do
+        unquote(token) when unquote(guards) ->
+          unquote(token_var) = unquote(token)
+          unquote(code)
+      end
+    end)
+  end
 
-      # char <> rest when is_whitespace(char).
-      {:<>, _, [ahead, rest]} ->
-        quote do
-          <<unquote(ahead), unquote(rest)::bits>> when unquote(guards) ->
-            unquote(code)
-        end
+  defp build_clause([{:when, _, [{:in, _, _}, _guards]}], _code, _streaming?), do: []
+
+  # char <> rest when is_whitespace(char).
+  defp build_clause([{:when, _, [{:<>, _, [ahead, rest]}, guards]}], code, _streaming?) do
+    quote do
+      <<unquote(ahead), unquote(rest)::bits>> when unquote(guards) ->
+        unquote(code)
     end
   end
 

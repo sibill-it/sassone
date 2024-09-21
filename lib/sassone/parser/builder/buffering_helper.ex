@@ -1,10 +1,7 @@
-defmodule Sassone.BufferingHelper do
+defmodule Sassone.Parser.Builder.BufferingHelper do
   @moduledoc false
 
-  @doc """
-  Define a named function that matches a token and returns the parsing context.
-  """
-
+  @doc "Define a named function that matches a token and returns the parsing context."
   defmacro halt!(call) do
     {name, args} = Macro.decompose_call(call)
     context_fun = build_context_fun(name, args)
@@ -15,6 +12,7 @@ defmodule Sassone.BufferingHelper do
     end
   end
 
+  @doc "Generate matches for UTF-8 binaries"
   def utf8_binaries do
     [
       quote(do: <<1::1, rest_of_first_byte::7>>),

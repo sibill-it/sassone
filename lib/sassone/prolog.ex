@@ -14,14 +14,10 @@ defmodule Sassone.Prolog do
         }
 
   def from_keyword(prolog) do
-    version = Keyword.get(prolog, :version, "1.0")
-    encoding = Keyword.get(prolog, :encoding)
-    standalone = Keyword.get(prolog, :standalone)
-
     %__MODULE__{
-      version: version,
-      encoding: encoding,
-      standalone: standalone
+      version: prolog[:version] || "1.0",
+      encoding: prolog[:encoding],
+      standalone: prolog[:standalone]
     }
   end
 end

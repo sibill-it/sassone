@@ -1,12 +1,6 @@
 defmodule Sassone.Handler do
-  @moduledoc ~S"""
+  @moduledoc """
   This module provides callbacks to implement SAX events handler.
-  """
-
-  @doc ~S"""
-  Callback for event handling.
-
-  This callback takes an event type, an event data and `user_state` as the input.
 
   The initial `user_state` is the third argument in `Sassone.parse_string/3` and `Sassone.parse_stream/3`.
   It can be accumulated and passed around during the parsing time by returning it as the result of
@@ -35,7 +29,7 @@ defmodule Sassone.Handler do
   * `:end_document`.
   * `:end_element`.
 
-  Check out `event_data()` type for more information of what are emitted for each event type.
+  Check out `t:data/0` type for more information of what are emitted for each event type.
 
   ## Examples
 
@@ -64,31 +58,47 @@ defmodule Sassone.Handler do
       end
   """
 
+  defmodule Accumulating do
+    @moduledoc false
+
+    @behaviour Sassone.Handler
+
+    @impl Sassone.Handler
+    def handle_event(event, data, state), do: {:ok, [{event, data} | state]}
+  end
+
+  alias Sassone.XML
+
   @type t :: module()
 
-  @type cdata_data() :: String.t()
-  @type characters_data() :: String.t()
-  @type end_document_data() :: any()
-  @type end_element_data() :: name :: String.t()
-  @type event_name() ::
-          :start_document | :end_document | :start_element | :characters | :cdata | :end_element
-  @type start_document_data() :: Keyword.t()
-  @type start_element_data() ::
-          {name :: String.t(), attributes :: [{name :: String.t(), value :: String.t()}]}
+  @type cdata :: String.t()
+  @type characters :: String.t()
+  @type end_document :: state()
+  @type end_element :: {XML.namespace(), XML.element_name()}
+  @type start_element :: {XML.namespace(), XML.element_name(), [XML.attribute()]}
+  @type start_document :: Keyword.t()
 
-  @type event_data() ::
-          cdata_data()
-          | characters_data()
-          | end_document_data()
-          | end_element_data()
-          | start_document_data()
-          | start_element_data()
+  @type event() ::
+          :cdata
+          | :characters
+          | :end_document
+          | :end_element
+          | :start_document
+          | :start_element
 
-  @type user_state() :: any()
+  @type data() ::
+          cdata()
+          | characters()
+          | end_document()
+          | end_element()
+          | start_document()
+          | start_element()
 
-  @callback handle_event(event_type :: event_name(), data :: event_data(), user_state :: any()) ::
-              {:ok, user_state()}
-              | {:cont, t(), user_state()}
-              | {:stop, user_state()}
-              | {:halt, user_state()}
+  @type state() :: any()
+
+  @callback handle_event(event(), data(), state()) ::
+              {:ok, state()}
+              | {:cont, t(), state()}
+              | {:stop, state()}
+              | {:halt, state()}
 end
