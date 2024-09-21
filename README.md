@@ -204,7 +204,7 @@ against.
 
 Therefore the conclusion in this section is only for reference purpose. Please
 feel free to benchmark against your target documents. The benchmark suite can be found
-in [bench/](https://github.com/sibill-it/sassone/tree/master/bench).
+in [bench/](https://github.com/sibill-it/sassone/tree/main/bench).
 
 A rule of thumb is that we should compare apple to apple. Some XML parsers
 target only specific types of XML. Therefore some indicators are provided in the
