@@ -46,31 +46,37 @@ A SAX event handler implementation is required before starting parsing.
 defmodule MyEventHandler do
   @behaviour Sassone.Handler
 
+  @impl Sassone.Handler
   def handle_event(:start_document, prolog, state) do
     IO.inspect("Start parsing document")
     {:ok, [{:start_document, prolog} | state]}
   end
 
+  @impl Sassone.Handler
   def handle_event(:end_document, _data, state) do
     IO.inspect("Finish parsing document")
     {:ok, [{:end_document} | state]}
   end
 
+  @impl Sassone.Handler
   def handle_event(:start_element, {namespace, name, attributes}, state) do
     IO.inspect("Start parsing namespace #{namespace} element #{name} with attributes #{inspect(attributes)}")
     {:ok, [{:start_element, name, attributes} | state]}
   end
 
+  @impl Sassone.Handler
   def handle_event(:end_element, name, state) do
     IO.inspect("Finish parsing element #{name}")
     {:ok, [{:end_element, name} | state]}
   end
 
+  @impl Sassone.Handler
   def handle_event(:characters, chars, state) do
     IO.inspect("Receive characters #{chars}")
     {:ok, [{:characters, chars} | state]}
   end
 
+  @impl Sassone.Handler
   def handle_event(:cdata, cdata, state) do
     IO.inspect("Receive CData #{cdata}")
     {:ok, [{:cdata, cdata} | state]}
