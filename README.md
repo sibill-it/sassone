@@ -101,17 +101,16 @@ iex> Sassone.parse_string(xml, MyEventHandler, [])
 Sassone also accepts file stream as the input:
 
 ```elixir
-stream = File.stream!("/path/to/file")
-
-Sassone.parse_stream(stream, MyEventHandler, initial_state)
+File.stream!("/path/to/file")
+|> Sassone.parse_stream(MyEventHandler, initial_state)
 ```
 
 It even supports parsing a normal stream.
 
 ```elixir
-stream = File.stream!("/path/to/file") |> Stream.filter(&(&1 != "\n"))
-
-Sassone.parse_stream(stream, MyEventHandler, initial_state)
+File.stream!("/path/to/file")
+|> Stream.filter(&(&1 != "\n"))
+|> Sassone.parse_stream(MyEventHandler, initial_state)
 ```
 
 ### Partial parsing
@@ -136,8 +135,8 @@ to encode the built element into XML binary.
 
 ```elixir
 iex> import Sassone.XML
-iex> element = element("person", [gender: "female"], "Alice")
-{"person", [{"gender", "female"}], [{:characters, "Alice"}]}
+iex> element = element(nil, "person", [gender: "female"], "Alice")
+{nil, "person", [{"gender", "female"}], [{:characters, "Alice"}]}
 iex> Sassone.encode!(element, [])
 "<?xml version=\"1.0\"?><person gender=\"female\">Alice</person>"
 ```
@@ -156,7 +155,7 @@ end
 iex> jack = %Person{gender: :male, name: "Jack"}
 iex> john = %Person{gender: :male, name: "John"}
 iex> import Sassone.XML
-iex> root = element("people", [], [jack, john])
+iex> root = element(nil, "people", [], [jack, john])
 iex> Sassone.encode!(root, [])
 "<?xml version=\"1.0\"?><people><person gender=\"male\">Jack</person><person gender=\"male\">John</person></people>"
 ```
@@ -182,7 +181,7 @@ not, offer any XPath functionality.
 [SweetXml][sweet_xml] is a wonderful library to work with XPath. However,
 `:xmerl`, the library used by SweetXml, is not always memory efficient and
 speedy. You can combine the best of both sides with [Saxmerl][saxmerl], which
-is a Sassone extension converting XML documents into SweetXml compatible format.
+is a Saxy extension converting XML documents into SweetXml compatible format.
 Please check that library out for more information.
 
 ### Sassone! Where did the name come from?
