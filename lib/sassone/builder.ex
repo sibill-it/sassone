@@ -78,27 +78,23 @@ end
 
 defimpl Sassone.Builder, for: Any do
   defmacro __deriving__(module, _struct, options) do
-    name = Keyword.fetch!(options, :name)
-    attribute_fields = Keyword.get(options, :attributes, [])
-    children_fields = Keyword.get(options, :children, [])
-
     quote do
       defimpl Sassone.Builder, for: unquote(module) do
-        def build(struct) do
-          import Sassone.XML
+        alias Sassone.XML
 
+        def build(struct) do
           attributes =
             struct
-            |> Map.take(unquote(attribute_fields))
+            |> Map.take(unquote(options[:attributes] || []))
             |> Enum.to_list()
 
           children =
             Enum.map(
-              unquote(children_fields),
+              unquote(options[:children] || []),
               &unquote(__MODULE__).fetch_value(struct, &1)
             )
 
-          element(nil, unquote(name), attributes, children)
+          XML.element(unquote(options[:namespace]), unquote(options[:name]), attributes, children)
         end
       end
     end
@@ -125,9 +121,11 @@ defimpl Sassone.Builder, for: Any do
 
       @derive {
         Sassone.Builder.Content,
-        [name: "person",
-         attributes: [:gender, :telephone],
-         children: [:name]]
+        [
+          name: "person",
+          attributes: [:gender, :telephone],
+          children: [:name]
+        ]
       }
       defstruct ...
       """
@@ -221,7 +219,5 @@ defimpl Sassone.Builder, for: Time do
 end
 
 defimpl Sassone.Builder, for: List do
-  def build(items) do
-    Enum.map(items, &Sassone.Builder.build/1)
-  end
+  def build(items), do: Enum.map(items, &Sassone.Builder.build/1)
 end

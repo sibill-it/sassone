@@ -130,18 +130,18 @@ defmodule Sassone.EncoderTest do
 
     items =
       for index <- 1..2 do
-        element(nil, :item, [], [
-          element(nil, :title, [], "Item #{index}"),
-          element(nil, :link, [], "Link #{index}"),
+        element(nil, "item", [], [
+          element(nil, "title", [], "Item #{index}"),
+          element(nil, "link", [], "Link #{index}"),
           comment("Comment #{index}"),
-          element(nil, :description, [], cdata("<a></b>")),
+          element(nil, "description", [], cdata("<a></b>")),
           characters("ABCDEFG"),
           reference(:entity, "copyright")
         ])
       end
 
     xml =
-      element(nil, :rss, [version: "2.0"], items)
+      element(nil, "rss", [version: "2.0"], items)
       |> encode(version: "1.0")
 
     expected = """

@@ -8,10 +8,10 @@ defmodule Sassone.BuilderTest do
   doctest Sassone.Builder
 
   test "builds pre-built simple-form element" do
-    element = element(nil, :foo, [], [])
+    element = element(nil, "foo", [], [])
     assert build(element) == element
 
-    element = empty_element(nil, :foo, [])
+    element = empty_element(nil, "foo", [])
     assert build(element) == element
 
     characters = characters("foo")

@@ -91,6 +91,7 @@ defmodule Sassone do
           count = Enum.count(emails)
 
           element(
+            nil,
             "emails",
             [count: Enum.count(emails)],
             Enum.map(emails, &element("email", [], &1))
@@ -388,7 +389,7 @@ defmodule Sassone do
   ## Examples
 
       iex> import Sassone.XML
-      iex> root = element(nil, :foo, [{"foo", "bar"}], "bar")
+      iex> root = element(nil, "foo", [{"foo", "bar"}], "bar")
       iex> prolog = [version: "1.0"]
       iex> Sassone.encode!(root, prolog)
       "<?xml version=\\"1.0\\"?><foo foo=\\"bar\\">bar</foo>"
@@ -411,7 +412,7 @@ defmodule Sassone do
   ## Examples
 
       iex> import Sassone.XML
-      iex> root = element(nil, :foo, [{"foo", "bar"}], "bar")
+      iex> root = element(nil, "foo", [{"foo", "bar"}], "bar")
       iex> prolog = [version: "1.0"]
       iex> Sassone.encode_to_iodata!(root, prolog)
       [

@@ -68,7 +68,7 @@ end
 defmodule Struct do
   @moduledoc false
 
-  @derive {Sassone.Builder, name: :test, attributes: [:foo], children: [:bar]}
+  @derive {Sassone.Builder, name: "test", attributes: [:foo], children: [:bar]}
   defstruct [:foo, :bar]
 end
 
@@ -84,7 +84,7 @@ defmodule Post do
   import Sassone.XML
 
   @derive {Sassone.Builder,
-           name: :post,
+           name: "post",
            children: [
              :categories,
              categories: &__MODULE__.build_cats/1,
@@ -104,7 +104,7 @@ end
 defmodule Category do
   @moduledoc false
 
-  @derive {Sassone.Builder, name: :category, attributes: [:name]}
+  @derive {Sassone.Builder, name: "category", attributes: [:name]}
 
   defstruct [:name]
 end

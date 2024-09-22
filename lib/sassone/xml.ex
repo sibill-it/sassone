@@ -13,13 +13,15 @@ defmodule Sassone.XML do
 
   @type comment :: {:comment, String.t()}
 
-  @type ref :: entity_ref() | hex_ref() | dec_ref()
-
   @type entity_ref :: {:reference, {:entity, String.t()}}
 
   @type hex_ref :: {:reference, {:hexadecimal, integer()}}
 
   @type dec_ref :: {:reference, {:decimal, integer()}}
+
+  @type ref :: entity_ref() | hex_ref() | dec_ref()
+
+  @type content :: element() | characters() | cdata() | ref() | comment() | String.t()
 
   @type processing_instruction ::
           {:processing_instruction, name :: String.t(), instruction :: String.t()}
@@ -37,8 +39,6 @@ defmodule Sassone.XML do
           children :: [content()]
         }
 
-  @type content :: element() | characters() | cdata() | ref() | comment() | String.t()
-
   @compile {
     :inline,
     [
@@ -55,8 +55,8 @@ defmodule Sassone.XML do
   @spec empty_element(namespace(), element_name(), [attribute()]) :: element()
   def empty_element(namespace, name, attributes) do
     {
-      namespace && to_string(namespace),
-      to_string(name),
+      namespace,
+      name,
       Enum.map(attributes, &attribute/1),
       []
     }
@@ -66,8 +66,8 @@ defmodule Sassone.XML do
   @spec element(namespace(), element_name(), [attribute()], term()) :: element()
   def element(namespace, name, attributes, children) do
     {
-      namespace && to_string(namespace),
-      to_string(name),
+      namespace,
+      name,
       Enum.map(attributes, &attribute/1),
       children(List.wrap(children))
     }
