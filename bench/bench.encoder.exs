@@ -9,7 +9,7 @@ bench_options = [
 ]
 
 defmodule Bench.Sassone.Builder do
-  import Sassone.XML, only: [element: 4]
+  import Sassone.XML
 
   def build(:simple) do
     element(nil, "root", [], [
@@ -19,7 +19,7 @@ defmodule Bench.Sassone.Builder do
         "element2",
         [],
         Enum.map(0..9, fn index ->
-          element(nil, "element2.#{index}", [], "foo")
+          element(nil, "element2.#{index}", [], [characters("foo")])
         end)
       ),
       element(nil, "element3", [], [])
@@ -27,9 +27,9 @@ defmodule Bench.Sassone.Builder do
   end
 
   def build(:nested) do
-    Enum.reduce(1000..1//-1, "content", fn index, acc ->
-      element(nil, "element.#{index}", [], acc)
-    end)
+    element(nil, "element", [], [characters("content") | Enum.reduce(1000..1//-1, [], fn index, acc ->
+      [element(nil, "element.#{index}", [], acc)]
+    end)])
   end
 
   # Make them available in compile time.
@@ -42,8 +42,8 @@ defmodule Bench.Sassone.Builder do
       "root",
       [],
       [
-        element(nil, "many-strings", [], @strings),
-        element(nil, "long-string", [], @long_string)
+        element(nil, "many-strings", [], Enum.map(@strings, &characters/1)),
+        element(nil, "long-string", [], [characters(@long_string)])
       ]
     )
   end
