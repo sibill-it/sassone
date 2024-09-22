@@ -1,7 +1,7 @@
-defmodule Sassone.Parser.Builder do
+defmodule Sassone.Parser.Generator do
   @moduledoc false
 
-  import Sassone.Parser.Builder.{BufferingHelper, Guards, Lookahead}
+  import Sassone.Parser.Generator.{BufferingHelper, Guards, Lookahead}
 
   defmacro __using__(options) do
     quote location: :keep do
@@ -1074,7 +1074,7 @@ defmodule Sassone.Parser.Builder do
              more?,
              original,
              pos,
-             state,
+             %State{} = state,
              attributes,
              open_quote,
              att_name,
@@ -1130,7 +1130,7 @@ defmodule Sassone.Parser.Builder do
 
           ";" <> rest ->
             name = binary_part(original, pos, len)
-            converted = Parser.convert_entity_reference(name, state)
+            converted = Parser.convert_entity_reference(name, state.expand_entity)
             acc = [acc | converted]
 
             att_value(
@@ -1542,7 +1542,7 @@ defmodule Sassone.Parser.Builder do
         end
       end
 
-      defp element_entity_ref(<<buffer::bits>>, more?, original, pos, state, acc, len) do
+      defp element_entity_ref(<<buffer::bits>>, more?, original, pos, %State{} = state, acc, len) do
         lookahead buffer, @streaming do
           char <> rest when is_ascii_name_char(char) ->
             element_entity_ref(rest, more?, original, pos, state, acc, len + 1)
@@ -1560,7 +1560,7 @@ defmodule Sassone.Parser.Builder do
 
           ";" <> rest ->
             name = binary_part(original, pos, len)
-            char = Parser.convert_entity_reference(name, state)
+            char = Parser.convert_entity_reference(name, state.expand_entity)
             chardata(rest, more?, original, pos + len + 1, state, [acc | char], 0)
 
           _ in [""] when more? ->

@@ -1,4 +1,4 @@
-defmodule Sassone.Parser.Builder.BufferingHelper do
+defmodule Sassone.Parser.Generator.BufferingHelper do
   @moduledoc false
 
   @doc "Define a named function that matches a token and returns the parsing context."
