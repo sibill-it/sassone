@@ -143,23 +143,6 @@ iex> Sassone.encode!(element, [])
 
 See `Sassone.XML` for more XML building APIs.
 
-Sassone also provides `Sassone.Builder` protocol to help composing structs into simple form.
-
-```elixir
-defmodule Person do
-  @derive {Sassone.Builder, name: "person", attributes: [:gender], children: [:name]}
-
-  defstruct [:gender, :name]
-end
-
-iex> jack = %Person{gender: :male, name: "Jack"}
-iex> john = %Person{gender: :male, name: "John"}
-iex> import Sassone.XML
-iex> root = element(nil, "people", [], [jack, john])
-iex> Sassone.encode!(root, [])
-"<?xml version=\"1.0\"?><people><person gender=\"male\">Jack</person><person gender=\"male\">John</person></people>"
-```
-
 ## FAQs with Sassone/XMLs
 
 ### Sassone sounds cool! But I just wanted to quickly convert some XMLs into maps/JSON...

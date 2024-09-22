@@ -74,8 +74,8 @@ defmodule Sassone.Handler do
   @type cdata :: String.t()
   @type characters :: String.t()
   @type end_document :: state()
-  @type end_element :: {XML.namespace(), XML.element_name()}
-  @type start_element :: {XML.namespace(), XML.element_name(), [XML.attribute()]}
+  @type end_element :: {XML.namespace(), XML.name()}
+  @type start_element :: {XML.namespace(), XML.name(), [XML.attribute()]}
   @type start_document :: Keyword.t()
 
   @type event() ::

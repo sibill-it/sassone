@@ -68,7 +68,6 @@ end
 defmodule Struct do
   @moduledoc false
 
-  @derive {Sassone.Builder, name: "test", attributes: [:foo], children: [:bar]}
   defstruct [:foo, :bar]
 end
 
@@ -81,30 +80,11 @@ end
 defmodule Post do
   @moduledoc false
 
-  import Sassone.XML
-
-  @derive {Sassone.Builder,
-           name: "post",
-           children: [
-             :categories,
-             categories: &__MODULE__.build_cats/1,
-             categories: {__MODULE__, :build_categories}
-           ]}
   defstruct [:categories]
-
-  def build_categories(categories) do
-    element(nil, "categories", [], categories)
-  end
-
-  def build_cats(categories) do
-    element(nil, "cats", [], categories)
-  end
 end
 
 defmodule Category do
   @moduledoc false
-
-  @derive {Sassone.Builder, name: "category", attributes: [:name]}
 
   defstruct [:name]
 end
@@ -112,41 +92,11 @@ end
 defmodule Person do
   @moduledoc false
 
-  import Sassone.XML
-
-  @derive {
-    Sassone.Builder,
-    name: "person", attributes: [:gender], children: [:name, emails: &__MODULE__.build_emails/1]
-  }
   defstruct [:name, :gender, emails: []]
-
-  def build_emails(emails) do
-    email_count = Enum.count(emails)
-
-    element(
-      nil,
-      "emails",
-      [count: email_count],
-      Enum.map(emails, &element(nil, "email", [], &1))
-    )
-  end
 end
 
 defmodule User do
   @moduledoc false
 
   defstruct [:username, :name]
-end
-
-defimpl Sassone.Builder, for: User do
-  import Sassone.XML
-
-  def build(user) do
-    element(
-      nil,
-      "Person",
-      [{"userName", user.username}],
-      [element(nil, "Name", [], user.name)]
-    )
-  end
 end

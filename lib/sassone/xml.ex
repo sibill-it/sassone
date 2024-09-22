@@ -21,66 +21,72 @@ defmodule Sassone.XML do
 
   @type content :: element() | characters() | cdata() | ref() | comment() | String.t()
 
-  @type processing_instruction ::
-          {:processing_instruction, name :: String.t(), instruction :: String.t()}
-
   @type namespace :: String.t() | nil
 
-  @type attribute :: {name :: String.t(), value :: String.t()}
+  @type name :: String.t()
 
-  @type element_name :: String.t()
+  @type value :: term()
 
-  @type element :: {
-          namespace :: String.t() | nil,
-          name :: String.t(),
-          attributes :: [attribute()],
-          children :: [content()]
-        }
+  @type attribute :: {namespace(), name(), value()}
+
+  @type element :: {namespace(), name(), [attribute()], [content()]}
+
+  @type processing_instruction :: {:processing_instruction, name(), instruction :: String.t()}
 
   @compile {
     :inline,
     [
-      element: 4,
-      characters: 1,
+      attribute: 3,
       cdata: 1,
+      characters: 1,
       comment: 1,
-      reference: 2,
-      processing_instruction: 2
+      element: 4,
+      empty_element: 3,
+      processing_instruction: 2,
+      reference: 2
     ]
   }
 
+  alias Sassone.Encoder
+
+  @doc "Builds attribute in simple form."
+  @spec attribute(namespace(), name(), value()) :: attribute()
+  def attribute(namespace, name, value), do: {namespace, name, Encoder.encode(value)}
+
   @doc "Builds empty element in simple form."
-  @spec empty_element(namespace(), element_name(), [attribute()]) :: element()
+  @spec empty_element(namespace(), name(), [attribute()]) :: element()
   def empty_element(namespace, name, attributes),
-    do: element(namespace, name, attributes, [])
+    do: {namespace, name, attributes, []}
 
   @doc "Builds element in simple form."
-  @spec element(namespace(), element_name(), [attribute()], [content()]) :: element()
+  @spec element(namespace(), name(), [attribute()], [content()]) :: element()
   def element(namespace, name, attributes, children),
     do: {namespace, name, attributes, children}
 
   @doc "Builds characters in simple form."
   @spec characters(text :: term()) :: characters()
-  def characters(text), do: {:characters, to_string(text)}
+  def characters(text) when is_list(text), do: {:characters, to_string(text)}
+  def characters(text), do: {:characters, Encoder.encode(text)}
 
   @doc "Builds CDATA in simple form."
   @spec cdata(text :: term()) :: cdata()
-  def cdata(text), do: {:cdata, to_string(text)}
+  def cdata(text) when is_list(text), do: {:cdata, to_string(text)}
+  def cdata(text), do: {:cdata, Encoder.encode(text)}
 
   @doc "Builds comment in simple form."
   @spec comment(text :: term()) :: comment()
-  def comment(text), do: {:comment, to_string(text)}
+  def comment(text) when is_list(text), do: {:comment, to_string(text)}
+  def comment(text), do: {:comment, Encoder.encode(text)}
 
   @doc "Builds reference in simple form."
   @spec reference(character_type(), value :: term()) :: ref()
-  def reference(:entity, name) when not is_nil(name), do: {:reference, {:entity, to_string(name)}}
+  def reference(:entity, name), do: {:reference, {:entity, Encoder.encode(name)}}
 
-  def reference(character_type, integer)
-      when character_type in [:hexadecimal, :decimal] and is_integer(integer),
-      do: {:reference, {character_type, integer}}
+  def reference(character_type, integer) when character_type in [:hexadecimal, :decimal],
+    do: {:reference, {character_type, integer}}
 
   @doc "Builds processing instruction in simple form."
   @spec processing_instruction(String.t(), String.t()) :: processing_instruction()
-  def processing_instruction(name, instruction) when not is_nil(name),
-    do: {:processing_instruction, to_string(name), instruction}
+  def processing_instruction(name, instruction),
+    do: {:processing_instruction, name, Encoder.encode(instruction)}
 end
