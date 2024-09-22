@@ -9,6 +9,7 @@ defmodule Sassone.MixProject do
       app: :sassone,
       version: @version,
       elixir: "~> 1.12",
+      elixirc_paths: elixirc_paths(Mix.env()),
       name: "Sassone",
       consolidate_protocols: Mix.env() != :test,
       deps: deps(),
@@ -24,7 +25,7 @@ defmodule Sassone.MixProject do
       description:
         "Sassone is an XML parser and encoder in Elixir that focuses on speed " <>
           "and standard compliance.",
-      maintainers: ["Cẩm Huỳnh"],
+      maintainers: ["Luca Corti"],
       licenses: ["MIT"],
       links: %{
         "Changelog" => "https://hexdocs.pm/sassone/changelog.html",
@@ -60,4 +61,8 @@ defmodule Sassone.MixProject do
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]
   end
+
+  # Specifies which paths to compile per environment.
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 end

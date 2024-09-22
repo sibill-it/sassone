@@ -251,7 +251,8 @@ To start developing:
 
 ## Copyright and License
 
-Copyright (c) 2018 Cẩm Huỳnh
+Copyright (c) 2018-2024 Cẩm Huỳnh
+Copyright (c) 2024 Luca Corti
 
 This software is licensed under [the MIT license](./LICENSE.md).
 
