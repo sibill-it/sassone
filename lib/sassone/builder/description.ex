@@ -1,6 +1,6 @@
 defmodule Sassone.Builder.Description do
   @moduledoc """
-  A struct representing the description of an XML resource element or attribute.
+  A struct representing the description of an XML element or attribute.
   """
 
   @type type :: :element | :attribute
@@ -11,7 +11,7 @@ defmodule Sassone.Builder.Description do
           field_name: field_name(),
           deserialize: boolean(),
           many: boolean(),
-          resource: module(),
+          struct: module(),
           serialize: boolean(),
           type: type(),
           recased_name: String.t()
@@ -21,14 +21,14 @@ defmodule Sassone.Builder.Description do
   defstruct field_name: nil,
             deserialize: true,
             many: false,
-            resource: nil,
+            struct: nil,
             serialize: true,
             type: nil,
             recased_name: nil
 
   schema = [
     case: [
-      doc: "Recase the resource field names automatically with the given strategy.",
+      doc: "Recase the struct field names automatically with the given strategy.",
       type: {:in, [:pascal, :camel, :snake, :kebab]},
       default: :pascal
     ],
@@ -42,12 +42,12 @@ defmodule Sassone.Builder.Description do
           type: :keyword_list,
           keys: [
             deserialize: [
-              doc: "If false, the resource field won't be deserialized from XML.",
+              doc: "If false, the struct field won't be parsed from XML.",
               type: :boolean,
               default: true
             ],
             serialize: [
-              doc: "If false, the resource field won't be serialized to XML.",
+              doc: "If false, the field will be ignored when building the struct to XML.",
               type: :boolean,
               default: true
             ],
@@ -58,17 +58,15 @@ defmodule Sassone.Builder.Description do
               default: false
             ],
             name: [
-              doc:
-                "Custom resource field name for serialization and deserialization. If defined, it will be used as-is instead of recasing.",
+              doc: "Custom field name for parsing and building. It will be used as-is.",
               type: :string
             ],
-            resource: [
-              doc:
-                "If the element is represented by another resource, it needs to be specified here.",
+            struct: [
+              doc: "A struct deriving `Sibill.Builder` used to parse and build this element.",
               type: :atom
             ],
             type: [
-              doc: "The XML shape that the resource field has in XML.",
+              doc: "How the field is represented in XML: `:element`, `:attribute`, `:content`.",
               type: {:in, [:element, :attribute]},
               default: :element
             ]
@@ -78,7 +76,7 @@ defmodule Sassone.Builder.Description do
       required: true
     ],
     namespace: [
-      doc: "XML namespace to apply to the resource when serializing.",
+      doc: "XML namespace of the element.",
       type: {:or, [:string, nil]},
       default: nil
     ],

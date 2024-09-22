@@ -55,7 +55,7 @@ defmodule Sassone.MixProject do
       main: "readme",
       source_url: @source_url,
       source_ref: "v#{@version}",
-      assets: "assets",
+      assets: %{"assets" => "assets"},
       formatters: ["html"],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]

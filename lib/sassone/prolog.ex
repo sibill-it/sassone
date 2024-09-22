@@ -1,5 +1,5 @@
 defmodule Sassone.Prolog do
-  @moduledoc false
+  @moduledoc "XML Prolog"
 
   defstruct [
     :version,

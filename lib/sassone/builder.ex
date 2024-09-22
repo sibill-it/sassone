@@ -4,8 +4,7 @@ defprotocol Sassone.Builder do
   @moduledoc """
   Protocol to implement XML serialization and deserialization for a struct.
 
-  You can derive or implement this protocol for your structs, and then use `Sassone.XML.serialize/2`
-  and `Sassone.XML.deserialize/2` to convert the struct to and from XML.
+  You can derive or implement this protocol for your structs
 
   When deriving the protocol, these are the supported options:
 
@@ -16,39 +15,39 @@ defprotocol Sassone.Builder do
   @type t :: struct()
 
   @doc """
-  Returns the list of attributes that are serialized/deserialized for this XML resource.
+  Returns the mapping of attributes for the struct.
   """
   @spec attributes(t()) :: [Description.t()]
-  def attributes(resource)
+  def attributes(struct)
 
   @doc """
-  Builds a resource for encoding with `Sassone.encode!/2`
+  Builds the struct for encoding with `Sassone.encode!/2`
   """
-  def build(resource)
+  def build(struct)
 
   @doc """
-  Returns the list of elements that are serialized/deserialized for this XML resource.
+  Returns the mapping of elements for the struct.
   """
   @spec elements(t()) :: [Description.t()]
-  def elements(resource)
+  def elements(t)
 
   @doc """
-  Returns the namespace for the XML resource.
+  Returns the XML namespace for the struct.
   """
   @spec namespace(t()) :: String.t() | nil
-  def namespace(resource)
+  def namespace(t)
 
   @doc """
-  Returns the parser module the XML resource.
+  Returns the `Sassone.Handler` implementation for the struct.
   """
-  @spec parser(t()) :: module()
-  def parser(_resource)
+  @spec handler(t()) :: module()
+  def handler(t)
 
   @doc """
-  Returns the root for the XML resource.
+  Returns the XML root element name for the struct.
   """
   @spec root_element(t()) :: String.t()
-  def root_element(resource)
+  def root_element(t)
 end
 
 defimpl Sassone.Builder, for: Any do
@@ -113,24 +112,22 @@ defimpl Sassone.Builder, for: Any do
         unquote(characters)
         unquote(end_element)
 
-        def attributes(_resource), do: unquote(Macro.escape(attributes))
-
-        def build(resource), do: XML.build_resource(resource, Builder.root_element(resource))
-
-        def elements(_resource), do: unquote(Macro.escape(elements))
-        def namespace(_resource), do: unquote(options[:namespace])
-        def root_element(_resource), do: unquote(options[:root_element])
-        def parser(_resource), do: __MODULE__
+        def attributes(_t), do: unquote(Macro.escape(attributes))
+        def build(t), do: XML.build(t, Builder.root_element(t))
+        def elements(_t), do: unquote(Macro.escape(elements))
+        def handler(_t), do: __MODULE__
+        def namespace(_t), do: unquote(options[:namespace])
+        def root_element(_t), do: unquote(options[:root_element])
       end
     end
   end
 
-  def attributes(_resource), do: []
-  def build(_resournce), do: nil
-  def elements(_resource), do: []
-  def namespace(_resource), do: nil
-  def parser(_resource), do: nil
-  def root_element(_resource), do: "Root"
+  def attributes(_t), do: []
+  def build(_t), do: nil
+  def elements(_t), do: []
+  def handler(_t), do: nil
+  def namespace(_t), do: nil
+  def root_element(_t), do: "Root"
 
   defp normalize_default_options(options) do
     {_, options} =
@@ -192,7 +189,7 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Description{resource: nil} = description, functions ->
+        %Description{struct: nil} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -222,7 +219,7 @@ defimpl Sassone.Builder, for: Any do
                   ) do
                 elements = [unquote(description.recased_name) | parser.elements]
                 keys = [unquote(description.field_name) | parser.keys]
-                next_parser = unquote(Builder.parser(struct(description.resource)))
+                next_parser = unquote(Builder.handler(struct(description.struct)))
                 parsers = [next_parser | parser.parsers]
                 state = put_in(parser.state, Enum.reverse(keys), %{})
 
@@ -251,7 +248,7 @@ defimpl Sassone.Builder, for: Any do
                   ) do
                 elements = [unquote(description.recased_name) | parser.elements]
                 keys = [unquote(description.field_name) | parser.keys]
-                next_parser = unquote(Builder.parser(struct(description.resource)))
+                next_parser = unquote(Builder.handler(struct(description.struct)))
                 parsers = [next_parser | parser.parsers]
 
                 state =
@@ -290,7 +287,7 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Description{resource: nil, many: false} = description, functions ->
+        %Description{struct: nil, many: false} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -316,7 +313,7 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Description{resource: nil, many: true} = description, functions ->
+        %Description{struct: nil, many: true} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -421,7 +418,7 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Description{resource: nil} = description, functions ->
+        %Description{struct: nil} = description, functions ->
           [
             quote do
               @impl Sassone.Handler

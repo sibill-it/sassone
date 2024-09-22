@@ -91,60 +91,50 @@ defmodule Sassone.XML do
   def processing_instruction(name, instruction),
     do: {:processing_instruction, name, Encoder.encode(instruction)}
 
-  @doc "Builds a resource for encoding with `Sassone.encode!/2"
-  @spec build_resource(Builder.t(), name()) :: element()
-  def build_resource(resource, element_name) do
+  @doc "Builds a struct for encoding with `Sassone.encode!/2`"
+  @spec build(Builder.t(), name()) :: element()
+  def build(struct, element_name) do
     attributes =
-      Builder.attributes(resource)
-      |> Enum.reduce([], &build_resource_attributes(resource, &1, &2))
+      Builder.attributes(struct)
+      |> Enum.reduce([], &build_attributes(struct, &1, &2))
       |> Enum.reverse()
 
     elements =
-      Builder.elements(resource)
-      |> Enum.reduce([], &build_resource_elements(resource, &1, &2))
+      Builder.elements(struct)
+      |> Enum.reduce([], &build_elements(struct, &1, &2))
       |> Enum.reverse()
 
-    element(Builder.namespace(resource), element_name, attributes, elements)
+    element(Builder.namespace(struct), element_name, attributes, elements)
   end
 
-  defp build_resource_attributes(_resource, %Description{serialize: false}, attributes),
+  defp build_attributes(_struct, %Description{serialize: false}, attributes),
     do: attributes
 
-  defp build_resource_attributes(resource, %Description{} = description, attributes) do
-    build_resource_attribute(
-      description,
-      Map.get(resource, description.field_name),
-      attributes
-    )
-  end
+  defp build_attributes(struct, %Description{} = description, attributes),
+    do: build_attribute(description, Map.get(struct, description.field_name), attributes)
 
-  defp build_resource_attribute(_description, nil, attributes), do: attributes
+  defp build_attribute(_description, nil, attributes), do: attributes
 
-  defp build_resource_attribute(description, value, attributes),
+  defp build_attribute(description, value, attributes),
     do: [attribute(nil, description.recased_name, value) | attributes]
 
-  defp build_resource_elements(_resource, %Description{serialize: false}, elements),
+  defp build_elements(_struct, %Description{serialize: false}, elements),
     do: elements
 
-  defp build_resource_elements(resource, %Description{} = description, elements) do
-    build_resource_element(
-      description,
-      Map.get(resource, description.field_name),
-      elements
-    )
-  end
+  defp build_elements(struct, %Description{} = description, elements),
+    do: build_element(description, Map.get(struct, description.field_name), elements)
 
-  defp build_resource_element(_description, value, elements) when value in [nil, []],
+  defp build_element(_description, value, elements) when value in [nil, []],
     do: elements
 
-  defp build_resource_element(%Description{} = description, values, elements)
+  defp build_element(%Description{} = description, values, elements)
        when is_list(values) do
-    Enum.reduce(values, elements, &build_resource_element(description, &1, &2))
+    Enum.reduce(values, elements, &build_element(description, &1, &2))
   end
 
-  defp build_resource_element(%Description{} = description, value, elements) do
+  defp build_element(%Description{} = description, value, elements) do
     if Builder.impl_for(value) do
-      [build_resource(value, description.recased_name) | elements]
+      [build(value, description.recased_name) | elements]
     else
       [element(nil, description.recased_name, [], [characters(value)]) | elements]
     end

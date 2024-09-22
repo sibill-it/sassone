@@ -38,7 +38,7 @@ Full documentation is available on [HexDocs](https://hexdocs.pm/sassone/).
 If you never work with a SAX parser before, please check out [this
 guide][sax-guide].
 
-### SAX parser
+## SAX parser
 
 A SAX event handler implementation is required before starting parsing.
 
@@ -60,14 +60,14 @@ defmodule MyEventHandler do
 
   @impl Sassone.Handler
   def handle_event(:start_element, {namespace, name, attributes}, state) do
-    IO.inspect("Start parsing namespace #{namespace} element #{name} with attributes #{inspect(attributes)}")
-    {:ok, [{:start_element, name, attributes} | state]}
+    IO.inspect("Start parsing element #{namespace}:#{name} with attributes #{inspect(attributes)}")
+    {:ok, [{:start_element, {namespace, name, attributes}} | state]}
   end
 
   @impl Sassone.Handler
-  def handle_event(:end_element, name, state) do
-    IO.inspect("Finish parsing element #{name}")
-    {:ok, [{:end_element, name} | state]}
+  def handle_event(:end_element, {namespave, name}, state) do
+    IO.inspect("Finish parsing element #{namespace}:#{name}")
+    {:ok, [{:end_element, {namespace, name}} | state]}
   end
 
   @impl Sassone.Handler
@@ -96,7 +96,7 @@ iex> Sassone.parse_string(xml, MyEventHandler, [])
   {:start_document, [version: "1.0"]}]}
 ```
 
-### Streaming parsing
+## Streaming parser
 
 Sassone also accepts file stream as the input:
 
@@ -113,7 +113,7 @@ File.stream!("/path/to/file")
 |> Sassone.parse_stream(MyEventHandler, initial_state)
 ```
 
-### Partial parsing
+## Partial parsing
 
 Sassone can parse an XML document partially. This feature is useful when the
 document cannot be turned into a stream e.g receiving over socket.
@@ -126,22 +126,52 @@ document cannot be turned into a stream e.g receiving over socket.
 {:ok, state} = Partial.terminate(partial)
 ```
 
-### XML builder
-
-Sassone offers two APIs to build simple form and encode XML document.
+## Generate XML
 
 Use `Sassone.XML` to build and compose XML simple form, then `Sassone.encode!/2`
 to encode the built element into XML binary.
 
 ```elixir
 iex> import Sassone.XML
-iex> element = element(nil, "person", [gender: "female"], "Alice")
+iex> element = element(nil, "person", [gender: "female"], [characters("Alice")])
 {nil, "person", [{"gender", "female"}], [{:characters, "Alice"}]}
 iex> Sassone.encode!(element, [])
-"<?xml version=\"1.0\"?><person gender=\"female\">Alice</person>"
+"<?xml version=\"1.0\" encoding=\"utf-8\"?><person gender=\"female\">Alice</person>"
 ```
 
-See `Sassone.XML` for more XML building APIs.
+See `Sassone.XML` for the full XML building API documentation.
+
+## Struct driven XML parsing and generation
+
+You can derive or implement `Sassone.Builder` for your structs to
+automatically generate the parsers and encoders for them.
+
+```elixir
+defmodule Person do
+  @derive {
+    Sassone.Builder,
+    root_element: "person",
+    fields: [gender: [type: :attribute], name: [type: :content]
+  }
+  defstruct [:gender, :name]
+end
+```
+
+You can now parse an XML document and obtain a struct by calling:
+
+```elixir
+iex> Sassone.parse_string(data, Sassone.Builder.handler(%MyStruct{}), nil)
+{:ok, %Person{gender: "female", name: "Alice"}}
+```
+
+Or generate an XML document for your struct by calling:
+
+```elixir
+iex> Sassone.Builder.build(%Person{gender: "female", name: "Alice"}) |> Sassone.encode!()
+"<?xml version=\"1.0\" encoding=\"utf-8\"?><person gender=\"female\">Alice</person>"
+```
+
+See `Sassone.Builder` for the full Builder API documentation.
 
 ## FAQs with Sassone/XMLs
 
