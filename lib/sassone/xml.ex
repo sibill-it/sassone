@@ -1,6 +1,4 @@
 defmodule Sassone.XML do
-  alias Sassone.Builder
-
   @moduledoc """
   Helper functions for building XML elements.
   """
@@ -53,25 +51,13 @@ defmodule Sassone.XML do
 
   @doc "Builds empty element in simple form."
   @spec empty_element(namespace(), element_name(), [attribute()]) :: element()
-  def empty_element(namespace, name, attributes) do
-    {
-      namespace,
-      name,
-      Enum.map(attributes, &attribute/1),
-      []
-    }
-  end
+  def empty_element(namespace, name, attributes),
+    do: element(namespace, name, attributes, [])
 
   @doc "Builds element in simple form."
-  @spec element(namespace(), element_name(), [attribute()], term()) :: element()
-  def element(namespace, name, attributes, children) do
-    {
-      namespace,
-      name,
-      Enum.map(attributes, &attribute/1),
-      children(List.wrap(children))
-    }
-  end
+  @spec element(namespace(), element_name(), [attribute()], [content()]) :: element()
+  def element(namespace, name, attributes, children),
+    do: {namespace, name, attributes, children}
 
   @doc "Builds characters in simple form."
   @spec characters(text :: term()) :: characters()
@@ -97,27 +83,4 @@ defmodule Sassone.XML do
   @spec processing_instruction(String.t(), String.t()) :: processing_instruction()
   def processing_instruction(name, instruction) when not is_nil(name),
     do: {:processing_instruction, to_string(name), instruction}
-
-  defp children(children, acc \\ [])
-
-  defp children([binary | children], acc) when is_binary(binary),
-    do: children(children, [binary | acc])
-
-  defp children([{type, _value} = form | children], acc)
-       when type in [:characters, :comment, :cdata, :reference],
-       do: children(children, [form | acc])
-
-  defp children([{_namespace, _name, _attributes, _content} = form | children], acc),
-    do: children(children, [form | acc])
-
-  defp children([child | children], acc) do
-    children(
-      children,
-      child |> Builder.build() |> List.wrap() |> Enum.reverse() |> Kernel.++(acc)
-    )
-  end
-
-  defp children([], acc), do: Enum.reverse(acc)
-
-  defp attribute({name, value}), do: {to_string(name), to_string(value)}
 end
