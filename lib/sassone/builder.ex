@@ -1,6 +1,4 @@
 defprotocol Sassone.Builder do
-  alias Sassone.Builder.Description
-
   @moduledoc """
   Protocol to implement XML serialization and deserialization for a struct.
 
@@ -8,8 +6,10 @@ defprotocol Sassone.Builder do
 
   When deriving the protocol, these are the supported options:
 
-  #{Description.__schema__() |> NimbleOptions.new!() |> NimbleOptions.docs()}
+  #{Sassone.Builder.Description.__schema__() |> NimbleOptions.new!() |> NimbleOptions.docs()}
   """
+
+  alias Sassone.Builder.Description
 
   @typedoc "A strut implementing `Sassone.Builder`"
   @type t :: struct()
@@ -180,7 +180,7 @@ defimpl Sassone.Builder, for: Any do
   end
 
   defp generate_start_element(elements) do
-    Enum.filter(elements, & &1.deserialize)
+    Enum.filter(elements, fn %Description{} = description -> description.parse end)
     |> Enum.reduce(
       [
         quote do
@@ -278,7 +278,7 @@ defimpl Sassone.Builder, for: Any do
   end
 
   defp generate_characters(elements) do
-    Enum.filter(elements, & &1.deserialize)
+    Enum.filter(elements, fn %Description{} = description -> description.parse end)
     |> Enum.reduce(
       [
         quote do
@@ -346,7 +346,7 @@ defimpl Sassone.Builder, for: Any do
   end
 
   defp generate_end_element(elements) do
-    Enum.filter(elements, & &1.deserialize)
+    Enum.filter(elements, fn %Description{} = description -> description.parse end)
     |> Enum.reduce(
       [
         quote do

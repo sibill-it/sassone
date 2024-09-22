@@ -9,22 +9,22 @@ defmodule Sassone.Builder.Description do
 
   @type t :: %__MODULE__{
           field_name: field_name(),
-          deserialize: boolean(),
+          parse: boolean(),
           many: boolean(),
           struct: module(),
-          serialize: boolean(),
+          build: boolean(),
           type: type(),
           recased_name: String.t()
         }
 
-  @enforce_keys [:field_name, :deserialize, :serialize, :type, :recased_name]
-  defstruct field_name: nil,
-            deserialize: true,
+  @enforce_keys [:field_name, :parse, :build, :type, :recased_name]
+  defstruct build: true,
+            field_name: nil,
             many: false,
+            parse: true,
+            recased_name: nil,
             struct: nil,
-            serialize: true,
-            type: nil,
-            recased_name: nil
+            type: nil
 
   schema = [
     case: [
@@ -41,19 +41,18 @@ defmodule Sassone.Builder.Description do
         *: [
           type: :keyword_list,
           keys: [
-            deserialize: [
+            parse: [
               doc: "If false, the struct field won't be parsed from XML.",
               type: :boolean,
               default: true
             ],
-            serialize: [
+            build: [
               doc: "If false, the field will be ignored when building the struct to XML.",
               type: :boolean,
               default: true
             ],
             many: [
-              doc:
-                "Specifies if the element can be repeated and should be serialized and deserialized as a list.",
+              doc: "Specifies if the field must be handled as a list.",
               type: :boolean,
               default: false
             ],

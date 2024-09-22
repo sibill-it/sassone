@@ -107,7 +107,7 @@ defmodule Sassone.XML do
     element(Builder.namespace(struct), element_name, attributes, elements)
   end
 
-  defp build_attributes(_struct, %Description{serialize: false}, attributes),
+  defp build_attributes(_struct, %Description{build: false}, attributes),
     do: attributes
 
   defp build_attributes(struct, %Description{} = description, attributes),
@@ -118,7 +118,7 @@ defmodule Sassone.XML do
   defp build_attribute(description, value, attributes),
     do: [attribute(nil, description.recased_name, value) | attributes]
 
-  defp build_elements(_struct, %Description{serialize: false}, elements),
+  defp build_elements(_struct, %Description{build: false}, elements),
     do: elements
 
   defp build_elements(struct, %Description{} = description, elements),
