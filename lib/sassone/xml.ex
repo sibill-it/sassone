@@ -116,7 +116,7 @@ defmodule Sassone.XML do
   defp build_attribute(_description, nil, attributes), do: attributes
 
   defp build_attribute(description, value, attributes),
-    do: [attribute(nil, description.recased_name, value) | attributes]
+    do: [attribute(nil, description.xml_name, value) | attributes]
 
   defp build_elements(_struct, %Description{build: false}, elements),
     do: elements
@@ -134,9 +134,9 @@ defmodule Sassone.XML do
 
   defp build_element(%Description{} = description, value, elements) do
     if Builder.impl_for(value) do
-      [build(value, description.recased_name) | elements]
+      [build(value, description.xml_name) | elements]
     else
-      [element(nil, description.recased_name, [], [characters(value)]) | elements]
+      [element(nil, description.xml_name, [], [characters(value)]) | elements]
     end
   end
 end

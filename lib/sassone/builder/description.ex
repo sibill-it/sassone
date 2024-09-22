@@ -14,15 +14,15 @@ defmodule Sassone.Builder.Description do
           struct: module(),
           build: boolean(),
           type: type(),
-          recased_name: String.t()
+          xml_name: String.t()
         }
 
-  @enforce_keys [:field_name, :parse, :build, :type, :recased_name]
+  @enforce_keys [:field_name, :parse, :build, :type, :xml_name]
   defstruct build: true,
             field_name: nil,
             many: false,
             parse: true,
-            recased_name: nil,
+            xml_name: nil,
             struct: nil,
             type: nil
 

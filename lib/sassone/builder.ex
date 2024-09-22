@@ -142,7 +142,7 @@ defimpl Sassone.Builder, for: Any do
   defp to_description({field_name, options}, case) do
     %Description{
       struct(Description, options)
-      | recased_name: options[:name] || recase(field_name, case) |> to_string(),
+      | xml_name: options[:name] || recase(field_name, case) |> to_string(),
         field_name: field_name
     }
   end
@@ -195,10 +195,10 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(description.recased_name) = element, _attributes} = data,
+                    {_ns, unquote(description.xml_name) = element, _attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(description.recased_name) | parser.elements]
+                elements = [unquote(description.xml_name) | parser.elements]
                 keys = [unquote(description.field_name) | parser.keys]
                 parser = %Parser{parser | elements: elements, keys: keys}
 
@@ -214,10 +214,10 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(description.recased_name) = element, _attributes} = data,
+                    {_ns, unquote(description.xml_name) = element, _attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(description.recased_name) | parser.elements]
+                elements = [unquote(description.xml_name) | parser.elements]
                 keys = [unquote(description.field_name) | parser.keys]
                 next_parser = unquote(Builder.handler(struct(description.struct)))
                 parsers = [next_parser | parser.parsers]
@@ -243,10 +243,10 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(description.recased_name) = element, _attributes} = data,
+                    {_ns, unquote(description.xml_name) = element, _attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(description.recased_name) | parser.elements]
+                elements = [unquote(description.xml_name) | parser.elements]
                 keys = [unquote(description.field_name) | parser.keys]
                 next_parser = unquote(Builder.handler(struct(description.struct)))
                 parsers = [next_parser | parser.parsers]
@@ -295,7 +295,7 @@ defimpl Sassone.Builder, for: Any do
                     :characters,
                     data,
                     %Parser{
-                      elements: [unquote(description.recased_name) | _],
+                      elements: [unquote(description.xml_name) | _],
                       keys: [unquote(description.field_name) | _]
                     } = parser
                   ) do
@@ -321,7 +321,7 @@ defimpl Sassone.Builder, for: Any do
                     :characters,
                     data,
                     %Parser{
-                      elements: [unquote(description.recased_name) | _],
+                      elements: [unquote(description.xml_name) | _],
                       keys: [unquote(description.field_name) | _]
                     } = parser
                   ) do
@@ -424,7 +424,7 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :end_element,
-                    {_ns, unquote(description.recased_name) = element},
+                    {_ns, unquote(description.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
                 parser = %Parser{parser | keys: keys, elements: elements}
@@ -441,7 +441,7 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :end_element,
-                    {_ns, unquote(description.recased_name) = element},
+                    {_ns, unquote(description.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
                 parser = %Parser{parser | keys: keys, elements: elements}
