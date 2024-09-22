@@ -45,11 +45,11 @@ defmodule Sassone.Handler do
         end
 
         def handle_event(:start_element, {namespace, name, attributes}, state) do
-          {:ok, [{:start_element, name, attributes} | state]}
+          {:ok, [{:start_element, namespace, name, attributes} | state]}
         end
 
-        def handle_event(:end_element, name, state) do
-          {:ok, [{:end_element, name} | state]}
+        def handle_event(:end_element, {namespace, name}, state) do
+          {:ok, [{:end_element, namespace, name} | state]}
         end
 
         def handle_event(:characters, chars, state) do
