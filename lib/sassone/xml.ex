@@ -48,7 +48,7 @@ defmodule Sassone.XML do
   }
 
   alias Sassone.{Builder, Encoder}
-  alias Sassone.Builder.Description
+  alias Sassone.Builder.Field
 
   @doc "Builds attribute in simple form."
   @spec attribute(namespace(), name(), value()) :: attribute()
@@ -107,32 +107,32 @@ defmodule Sassone.XML do
     element(Builder.namespace(struct), element_name, attributes, elements)
   end
 
-  defp build_attributes(_struct, %Description{build: false}, attributes),
+  defp build_attributes(_struct, %Field{build: false}, attributes),
     do: attributes
 
-  defp build_attributes(struct, %Description{} = description, attributes),
-    do: build_attribute(description, Map.get(struct, description.field_name), attributes)
+  defp build_attributes(struct, %Field{} = description, attributes),
+    do: build_attribute(description, Map.get(struct, description.name), attributes)
 
   defp build_attribute(_description, nil, attributes), do: attributes
 
   defp build_attribute(description, value, attributes),
     do: [attribute(nil, description.xml_name, value) | attributes]
 
-  defp build_elements(_struct, %Description{build: false}, elements),
+  defp build_elements(_struct, %Field{build: false}, elements),
     do: elements
 
-  defp build_elements(struct, %Description{} = description, elements),
-    do: build_element(description, Map.get(struct, description.field_name), elements)
+  defp build_elements(struct, %Field{} = description, elements),
+    do: build_element(description, Map.get(struct, description.name), elements)
 
   defp build_element(_description, value, elements) when value in [nil, []],
     do: elements
 
-  defp build_element(%Description{} = description, values, elements)
+  defp build_element(%Field{} = description, values, elements)
        when is_list(values) do
     Enum.reduce(values, elements, &build_element(description, &1, &2))
   end
 
-  defp build_element(%Description{} = description, value, elements) do
+  defp build_element(%Field{} = description, value, elements) do
     if Builder.impl_for(value) do
       [build(value, description.xml_name) | elements]
     else

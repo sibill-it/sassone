@@ -6,10 +6,10 @@ defprotocol Sassone.Builder do
 
   When deriving the protocol, these are the supported options:
 
-  #{Sassone.Builder.Description.__schema__() |> NimbleOptions.new!() |> NimbleOptions.docs()}
+  #{Sassone.Builder.Field.__schema__() |> NimbleOptions.new!() |> NimbleOptions.docs()}
   """
 
-  alias Sassone.Builder.Description
+  alias Sassone.Builder.Field
 
   @typedoc "A strut implementing `Sassone.Builder`"
   @type t :: struct()
@@ -17,7 +17,7 @@ defprotocol Sassone.Builder do
   @doc """
   Returns the mapping of attributes for the struct.
   """
-  @spec attributes(t()) :: [Description.t()]
+  @spec attributes(t()) :: [Field.t()]
   def attributes(struct)
 
   @doc """
@@ -28,7 +28,7 @@ defprotocol Sassone.Builder do
   @doc """
   Returns the mapping of elements for the struct.
   """
-  @spec elements(t()) :: [Description.t()]
+  @spec elements(t()) :: [Field.t()]
   def elements(t)
 
   @doc """
@@ -52,7 +52,7 @@ end
 
 defimpl Sassone.Builder, for: Any do
   alias Sassone.Builder
-  alias Sassone.Builder.Description
+  alias Sassone.Builder.Field
 
   import Sassone.XML
 
@@ -60,7 +60,7 @@ defimpl Sassone.Builder, for: Any do
   Default implementation of the `Sassone.Builder` protocol for any struct.
 
   Options:
-  #{NimbleOptions.docs(Description.__schema__())}
+  #{NimbleOptions.docs(Field.__schema__())}
   """
 
   defmacro __deriving__(module, struct, options) do
@@ -68,13 +68,13 @@ defimpl Sassone.Builder, for: Any do
       options
       |> normalize_default_options()
       |> Macro.prewalk(&Macro.expand(&1, __CALLER__))
-      |> NimbleOptions.validate!(NimbleOptions.new!(Description.__schema__()))
+      |> NimbleOptions.validate!(NimbleOptions.new!(Field.__schema__()))
 
     struct_members = struct |> Map.keys() |> MapSet.new()
-    field_names = options[:fields] |> Keyword.keys() |> MapSet.new()
+    names = options[:fields] |> Keyword.keys() |> MapSet.new()
 
-    if not MapSet.subset?(field_names, struct_members) do
-      difference = MapSet.difference(field_names, struct_members)
+    if not MapSet.subset?(names, struct_members) do
+      difference = MapSet.difference(names, struct_members)
 
       raise "Mismatching fields in the declaration. Missing fields: #{inspect(MapSet.to_list(difference))}"
     end
@@ -82,7 +82,7 @@ defimpl Sassone.Builder, for: Any do
     fields = Enum.map(options[:fields], &to_description(&1, options[:case]))
 
     {elements, attributes} =
-      Enum.split_with(fields, fn %Description{} = description ->
+      Enum.split_with(fields, fn %Field{} = description ->
         description.type == :element
       end)
 
@@ -139,18 +139,18 @@ defimpl Sassone.Builder, for: Any do
     options
   end
 
-  defp to_description({field_name, options}, case) do
-    %Description{
-      struct(Description, options)
-      | xml_name: options[:name] || recase(field_name, case) |> to_string(),
-        field_name: field_name
+  defp to_description({name, options}, case) do
+    %Field{
+      struct(Field, options)
+      | xml_name: options[:name] || recase(name, case) |> to_string(),
+        name: name
     }
   end
 
-  defp recase(field_name, :pascal), do: Recase.to_pascal(field_name)
-  defp recase(field_name, :camel), do: Recase.to_camel(field_name)
-  defp recase(field_name, :snake), do: Recase.to_snake(field_name)
-  defp recase(field_name, :kebab), do: Recase.to_kebab(field_name)
+  defp recase(name, :pascal), do: Recase.to_pascal(name)
+  defp recase(name, :camel), do: Recase.to_camel(name)
+  defp recase(name, :snake), do: Recase.to_snake(name)
+  defp recase(name, :kebab), do: Recase.to_kebab(name)
 
   defp generate_start_document do
     quote do
@@ -180,7 +180,7 @@ defimpl Sassone.Builder, for: Any do
   end
 
   defp generate_start_element(elements) do
-    Enum.filter(elements, fn %Description{} = description -> description.parse end)
+    Enum.filter(elements, fn %Field{} = description -> description.parse end)
     |> Enum.reduce(
       [
         quote do
@@ -189,7 +189,7 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Description{struct: nil} = description, functions ->
+        %Field{struct: nil} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -199,7 +199,7 @@ defimpl Sassone.Builder, for: Any do
                     %Parser{} = parser
                   ) do
                 elements = [unquote(description.xml_name) | parser.elements]
-                keys = [unquote(description.field_name) | parser.keys]
+                keys = [unquote(description.name) | parser.keys]
                 parser = %Parser{parser | elements: elements, keys: keys}
 
                 {:ok, parser}
@@ -208,7 +208,7 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Description{many: false} = description, functions ->
+        %Field{many: false} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -218,7 +218,7 @@ defimpl Sassone.Builder, for: Any do
                     %Parser{} = parser
                   ) do
                 elements = [unquote(description.xml_name) | parser.elements]
-                keys = [unquote(description.field_name) | parser.keys]
+                keys = [unquote(description.name) | parser.keys]
                 next_parser = unquote(Builder.handler(struct(description.struct)))
                 parsers = [next_parser | parser.parsers]
                 state = put_in(parser.state, Enum.reverse(keys), %{})
@@ -237,7 +237,7 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Description{many: true} = description, functions ->
+        %Field{many: true} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -247,7 +247,7 @@ defimpl Sassone.Builder, for: Any do
                     %Parser{} = parser
                   ) do
                 elements = [unquote(description.xml_name) | parser.elements]
-                keys = [unquote(description.field_name) | parser.keys]
+                keys = [unquote(description.name) | parser.keys]
                 next_parser = unquote(Builder.handler(struct(description.struct)))
                 parsers = [next_parser | parser.parsers]
 
@@ -278,7 +278,7 @@ defimpl Sassone.Builder, for: Any do
   end
 
   defp generate_characters(elements) do
-    Enum.filter(elements, fn %Description{} = description -> description.parse end)
+    Enum.filter(elements, fn %Field{} = description -> description.parse end)
     |> Enum.reduce(
       [
         quote do
@@ -287,7 +287,7 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Description{struct: nil, many: false} = description, functions ->
+        %Field{struct: nil, many: false} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -296,7 +296,7 @@ defimpl Sassone.Builder, for: Any do
                     data,
                     %Parser{
                       elements: [unquote(description.xml_name) | _],
-                      keys: [unquote(description.field_name) | _]
+                      keys: [unquote(description.name) | _]
                     } = parser
                   ) do
                 state =
@@ -313,7 +313,7 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Description{struct: nil, many: true} = description, functions ->
+        %Field{struct: nil, many: true} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -322,7 +322,7 @@ defimpl Sassone.Builder, for: Any do
                     data,
                     %Parser{
                       elements: [unquote(description.xml_name) | _],
-                      keys: [unquote(description.field_name) | _]
+                      keys: [unquote(description.name) | _]
                     } = parser
                   ) do
                 state =
@@ -346,7 +346,7 @@ defimpl Sassone.Builder, for: Any do
   end
 
   defp generate_end_element(elements) do
-    Enum.filter(elements, fn %Description{} = description -> description.parse end)
+    Enum.filter(elements, fn %Field{} = description -> description.parse end)
     |> Enum.reduce(
       [
         quote do
@@ -418,7 +418,7 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Description{struct: nil} = description, functions ->
+        %Field{struct: nil} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -435,7 +435,7 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Description{many: false} = description, functions ->
+        %Field{many: false} = description, functions ->
           [
             quote do
               @impl Sassone.Handler
