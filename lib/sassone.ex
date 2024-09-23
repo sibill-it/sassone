@@ -123,7 +123,7 @@ defmodule Sassone do
       end
 
       iex> xml = "<?xml version='1.0' ?><foo bar='value'></foo>"
-      iex> Sassone.parse_string(xml, MyTestHandler, [])
+      iex> Sassone.parse_string(xml, Sassone.TestHandlers.MyTestHandler, [])
       {:ok,
        [{:end_document},
         {:end_element, {nil, "foo"}},
@@ -193,7 +193,7 @@ defmodule Sassone do
       end
 
       iex> stream = File.stream!("./test/support/fixture/foo.xml")
-      iex> Sassone.parse_stream(stream, MyTestHandler, [])
+      iex> Sassone.parse_stream(stream, Sassone.TestHandlers.MyTestHandler, [])
       {:ok,
        [{:end_document},
         {:end_element, {nil, "foo"}},

@@ -2,7 +2,7 @@ defmodule Sassone.PartialTest do
   use SassoneTest.ParsingCase, async: true
 
   alias Sassone.Partial
-  alias SassoneTest.{ControlHandler, StackHandler}
+  alias Sassone.TestHandlers.{ControlHandler, StackHandler}
 
   doctest Sassone.Partial
 

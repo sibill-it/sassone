@@ -1,5 +1,6 @@
 defmodule Sassone.Parser.ElementTest do
   use SassoneTest.ParsingCase, async: true
+  use ExUnitProperties
 
   alias Sassone.TestHandlers.StackHandler
 

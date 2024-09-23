@@ -54,8 +54,6 @@ defimpl Sassone.Builder, for: Any do
   alias Sassone.Builder
   alias Sassone.Builder.Field
 
-  import Sassone.XML
-
   @moduledoc """
   Default implementation of the `Sassone.Builder` protocol for any struct.
 

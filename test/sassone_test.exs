@@ -1,7 +1,7 @@
 defmodule SassoneTest do
   use SassoneTest.ParsingCase, async: true
 
-  alias SassoneTest.{ControlHandler, StackHandler}
+  alias Sassone.TestHandlers.{ControlHandler, StackHandler}
 
   doctest Sassone
 
