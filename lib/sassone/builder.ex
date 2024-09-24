@@ -89,7 +89,7 @@ defimpl Sassone.Builder, for: Any do
       end)
 
     start_document = generate_start_document()
-    end_document = generate_end_document(module)
+    end_document = generate_end_document()
     start_element = generate_start_element(elements)
     characters = generate_characters(elements)
     end_element = generate_end_element(elements)
@@ -154,21 +154,11 @@ defimpl Sassone.Builder, for: Any do
     end
   end
 
-  defp generate_end_document(module) do
+  defp generate_end_document() do
     quote do
       @impl Sassone.Handler
       def handle_event(:end_document, _data, %Parser{} = parser) do
-        Code.ensure_loaded!(unquote(module))
-
-        if function_exported?(unquote(module), :changeset, 2) do
-          case unquote(module).changeset(struct(unquote(module)), parser.state)
-               |> Ecto.Changeset.apply_action(:cast) do
-            {:ok, schema} -> {:ok, schema}
-            {:error, _changeset} = error -> {:stop, error}
-          end
-        else
-          {:ok, parser.state}
-        end
+        {:ok, parser.state}
       end
     end
   end

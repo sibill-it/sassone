@@ -157,14 +157,24 @@ defmodule Person do
 end
 ```
 
-You can now parse an XML document and obtain a struct by calling:
+You can now parse an XML document and obtain a map by calling:
 
 ```elixir
-iex> Sassone.parse_string(data, Sassone.Builder.handler(%MyStruct{}), nil)
-{:ok, %Person{gender: "female", name: "Alice"}}
+iex> {:ok, map} = Sassone.parse_string(data, Sassone.Builder.handler(%MyStruct{}), nil)
+{:ok, %{gender: "female", name: "Alice"}}
 ```
 
-Or generate an XML document for your struct by calling:
+You can then use the map to create the struct you need:
+
+```elixir
+iex> struct(Person, map)
+%Person{"female", name: "Alice"}
+```
+
+In case of deeply nested data, this can prove difficult. In that case, you can use a library
+to handle the conversion to struct like `Ecto` with embedded schemas to cast and validate data.
+
+To generate an XML document for your struct by calling:
 
 ```elixir
 iex> Sassone.Builder.build(%Person{gender: "female", name: "Alice"}) |> Sassone.encode!()
