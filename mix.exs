@@ -53,8 +53,7 @@ defmodule Sassone.MixProject do
   defp package() do
     [
       description:
-        "Sassone is an XML parser and encoder in Elixir that focuses on speed " <>
-          "and standard compliance.",
+        "Sassone is an XML parser and encoder in Elixir that focuses on speed and standard compliance.",
       maintainers: ["Luca Corti"],
       licenses: ["MIT"],
       links: %{

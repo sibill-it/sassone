@@ -77,11 +77,15 @@ defimpl Sassone.Builder, for: Any do
       raise "Mismatching fields in the declaration. Missing fields: #{inspect(MapSet.to_list(difference))}"
     end
 
-    fields = Enum.map(options[:fields], &to_description(&1, options[:case]))
+    fields =
+      Enum.map(options[:fields], fn {name, options} ->
+        xml_name = options[:name] || recase(to_string(name), options[:case])
+        %Field{struct(Field, options) | xml_name: xml_name, name: name}
+      end)
 
     {elements, attributes} =
-      Enum.split_with(fields, fn %Field{} = description ->
-        description.type == :element
+      Enum.split_with(fields, fn %Field{} = field ->
+        field.type == :element
       end)
 
     start_document = generate_start_document()
@@ -137,14 +141,6 @@ defimpl Sassone.Builder, for: Any do
     options
   end
 
-  defp to_description({name, options}, case) do
-    %Field{
-      struct(Field, options)
-      | xml_name: options[:name] || recase(name, case) |> to_string(),
-        name: name
-    }
-  end
-
   defp recase(name, :pascal), do: Recase.to_pascal(name)
   defp recase(name, :camel), do: Recase.to_camel(name)
   defp recase(name, :snake), do: Recase.to_snake(name)
@@ -178,7 +174,7 @@ defimpl Sassone.Builder, for: Any do
   end
 
   defp generate_start_element(elements) do
-    Enum.filter(elements, fn %Field{} = description -> description.parse end)
+    Enum.filter(elements, fn %Field{} = field -> field.parse end)
     |> Enum.reduce(
       [
         quote do
@@ -187,17 +183,17 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Field{struct: nil} = description, functions ->
+        %Field{struct: nil} = field, functions ->
           [
             quote do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(description.xml_name) = element, _attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(description.xml_name) | parser.elements]
-                keys = [unquote(description.name) | parser.keys]
+                elements = [unquote(field.xml_name) | parser.elements]
+                keys = [unquote(field.name) | parser.keys]
                 parser = %Parser{parser | elements: elements, keys: keys}
 
                 {:ok, parser}
@@ -206,18 +202,18 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Field{many: false} = description, functions ->
+        %Field{many: false} = field, functions ->
           [
             quote do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(description.xml_name) = element, _attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(description.xml_name) | parser.elements]
-                keys = [unquote(description.name) | parser.keys]
-                next_parser = unquote(Builder.handler(struct(description.struct)))
+                elements = [unquote(field.xml_name) | parser.elements]
+                keys = [unquote(field.name) | parser.keys]
+                next_parser = unquote(Builder.handler(struct(field.struct)))
                 parsers = [next_parser | parser.parsers]
                 state = put_in(parser.state, Enum.reverse(keys), %{})
 
@@ -235,18 +231,18 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Field{many: true} = description, functions ->
+        %Field{many: true} = field, functions ->
           [
             quote do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(description.xml_name) = element, _attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(description.xml_name) | parser.elements]
-                keys = [unquote(description.name) | parser.keys]
-                next_parser = unquote(Builder.handler(struct(description.struct)))
+                elements = [unquote(field.xml_name) | parser.elements]
+                keys = [unquote(field.name) | parser.keys]
+                next_parser = unquote(Builder.handler(struct(field.struct)))
                 parsers = [next_parser | parser.parsers]
 
                 state =
@@ -269,14 +265,14 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        _description, functions ->
+        _field, functions ->
           functions
       end
     )
   end
 
   defp generate_characters(elements) do
-    Enum.filter(elements, fn %Field{} = description -> description.parse end)
+    Enum.filter(elements, fn %Field{} = field -> field.parse end)
     |> Enum.reduce(
       [
         quote do
@@ -285,7 +281,7 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Field{struct: nil, many: false} = description, functions ->
+        %Field{struct: nil, many: false} = field, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -293,8 +289,8 @@ defimpl Sassone.Builder, for: Any do
                     :characters,
                     data,
                     %Parser{
-                      elements: [unquote(description.xml_name) | _],
-                      keys: [unquote(description.name) | _]
+                      elements: [unquote(field.xml_name) | _],
+                      keys: [unquote(field.name) | _]
                     } = parser
                   ) do
                 state =
@@ -311,7 +307,7 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Field{struct: nil, many: true} = description, functions ->
+        %Field{struct: nil, many: true} = field, functions ->
           [
             quote do
               @impl Sassone.Handler
@@ -319,8 +315,8 @@ defimpl Sassone.Builder, for: Any do
                     :characters,
                     data,
                     %Parser{
-                      elements: [unquote(description.xml_name) | _],
-                      keys: [unquote(description.name) | _]
+                      elements: [unquote(field.xml_name) | _],
+                      keys: [unquote(field.name) | _]
                     } = parser
                   ) do
                 state =
@@ -337,14 +333,14 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        _description, functions ->
+        _field, functions ->
           functions
       end
     )
   end
 
   defp generate_end_element(elements) do
-    Enum.filter(elements, fn %Field{} = description -> description.parse end)
+    Enum.filter(elements, fn %Field{} = field -> field.parse end)
     |> Enum.reduce(
       [
         quote do
@@ -416,13 +412,13 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
-        %Field{struct: nil} = description, functions ->
+        %Field{struct: nil} = field, functions ->
           [
             quote do
               @impl Sassone.Handler
               def handle_event(
                     :end_element,
-                    {_ns, unquote(description.xml_name) = element},
+                    {_ns, unquote(field.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
                 parser = %Parser{parser | keys: keys, elements: elements}
@@ -433,13 +429,13 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        %Field{many: false} = description, functions ->
+        %Field{many: false} = field, functions ->
           [
             quote do
               @impl Sassone.Handler
               def handle_event(
                     :end_element,
-                    {_ns, unquote(description.xml_name) = element},
+                    {_ns, unquote(field.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
                 parser = %Parser{parser | keys: keys, elements: elements}
@@ -450,7 +446,7 @@ defimpl Sassone.Builder, for: Any do
             | functions
           ]
 
-        _description, functions ->
+        _field, functions ->
           functions
       end
     )
