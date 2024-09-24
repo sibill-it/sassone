@@ -144,7 +144,7 @@ See `Sassone.XML` for the full XML building API documentation.
 ## Struct driven XML parsing and generation
 
 You can derive or implement `Sassone.Builder` for your structs to
-automatically generate the parsers and encoders for them.
+automatically generate the parsers and builders for them.
 
 ```elixir
 defmodule Person do
@@ -157,23 +157,6 @@ defmodule Person do
 end
 ```
 
-You can now parse an XML document and obtain a map by calling:
-
-```elixir
-iex> {:ok, map} = Sassone.parse_string(data, Sassone.Builder.handler(%MyStruct{}), nil)
-{:ok, %{gender: "female", name: "Alice"}}
-```
-
-You can then use the map to create the struct you need:
-
-```elixir
-iex> struct(Person, map)
-%Person{"female", name: "Alice"}
-```
-
-In case of deeply nested data, this can prove difficult. In that case, you can use a library
-to handle the conversion to struct like `Ecto` with embedded schemas to cast and validate data.
-
 To generate an XML document for your struct by calling:
 
 ```elixir
@@ -181,20 +164,53 @@ iex> Sassone.Builder.build(%Person{gender: "female", name: "Alice"}) |> Sassone.
 "<?xml version=\"1.0\" encoding=\"utf-8\"?><person gender=\"female\">Alice</person>"
 ```
 
+And you can now parse an XML document and obtain a map by calling:
+
+```elixir
+iex> {:ok, {struct, map}} = Sassone.parse_string(data, Sassone.Builder.handler(%Person{}), nil)
+{:ok, {Person, %{gender: "female", name: "Alice"}}}
+```
+
+You can then use the map to create the struct you need:
+
+```elixir
+iex> struct(struct, map)
+%Person{gender: "female", name: "Alice"}
+```
+
+In case of deeply nested data, this can prove difficult. In that case, you can use a library
+to handle the conversion to struct. `Ecto` with embedded schemas is great to cast and validate
+data.
+
+For example, assuming you defined `Person` as an embedded `Ecto` schema with a `changeset/2` function:
+
+```elixir
+defmodule Person do
+  @derive {
+    Sassone.Builder,
+    root_element: "person",
+    fields: [gender: [type: :attribute], name: [type: :content]
+  }
+  embedded_schema do
+    field :gender
+    field :name
+  end
+
+  def changeset(person, params) do
+    person
+    |> cast([:gender, :name)
+  end
+end
+```
+
+```elixir
+iex> struct.changeset(struct(schema), map) |> Ecto.Changeset.apply_action(:cast)
+%Person{gender: "female", name: "Alice"}
+```
+
 See `Sassone.Builder` for the full Builder API documentation.
 
 ## FAQs with Sassone/XMLs
-
-### Sassone sounds cool! But I just wanted to quickly convert some XMLs into maps/JSON...
-
-Sassone does not have offer XML to maps conversion, because many awesome people
-already made it happen 💪:
-
-* https://github.com/bennyhat/xml_json
-* https://github.com/xinz/sax_map
-
-Alternatively, this [pull request](https://github.com/qcam/saxy/pull/78) could
-serve as a good reference if you want to implement your own map-based handler.
 
 ### Does Sassone work with XPath?
 
