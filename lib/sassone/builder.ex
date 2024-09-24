@@ -79,14 +79,19 @@ defimpl Sassone.Builder, for: Any do
 
     fields =
       Enum.map(options[:fields], fn {name, field_options} ->
-        xml_name = field_options[:name] || recase(to_string(name), options[:case])
+        case =
+          if options[:type] == :attribute do
+            options[:attribute_case]
+          else
+            options[:element_case]
+          end
+
+        xml_name = field_options[:name] || recase(to_string(name), case)
         %Field{struct(Field, field_options) | xml_name: xml_name, name: name}
       end)
 
-    {elements, attributes} =
-      Enum.split_with(fields, fn %Field{} = field ->
-        field.type == :element
-      end)
+    {attributes, elements} =
+      Enum.split_with(fields, fn %Field{} = field -> field.type == :attribute end)
 
     start_document = generate_start_document(module)
     end_document = generate_end_document()
