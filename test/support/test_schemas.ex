@@ -7,6 +7,7 @@ defmodule Sassone.TestSchemas do
       element_case: :snake,
       root_element: "person",
       fields: [
+        bio: [type: :content],
         gender: [type: :attribute],
         name: [type: :element],
         surname: [type: :element]
