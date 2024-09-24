@@ -2,6 +2,8 @@ defmodule Sassone.TestSchemas do
   @moduledoc false
 
   defmodule Person do
+    @moduledoc false
+
     @derive {
       Sassone.Builder,
       element_case: :snake,
