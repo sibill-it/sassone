@@ -127,7 +127,7 @@ defmodule Sassone do
       {:ok,
        [{:end_document},
         {:end_element, {nil, "foo"}},
-        {:start_element, nil, "foo", [{"bar", "value"}]},
+        {:start_element, nil, "foo", [{nil, "bar", "value"}]},
         {:start_document, [version: "1.0"]}]}
   """
 
@@ -197,7 +197,7 @@ defmodule Sassone do
       {:ok,
        [{:end_document},
         {:end_element, {nil, "foo"}},
-        {:start_element, nil, "foo", [{"bar", "value"}]},
+        {:start_element, nil, "foo", [{nil, "bar", "value"}]},
         {:start_document, [version: "1.0"]}]}
 
   ## Memory usage
@@ -281,7 +281,7 @@ defmodule Sassone do
       iex> Enum.to_list Sassone.stream_events stream
       [
         start_document: [version: "1.0"],
-        start_element: {nil, "foo", [{"bar", "value"}]},
+        start_element: {nil, "foo", [{nil, "bar", "value"}]},
         end_element: {nil, "foo"}
       ]
       iex> Enum.to_list Sassone.stream_events ["<foo>unclosed value"]
