@@ -88,7 +88,7 @@ defimpl Sassone.Builder, for: Any do
         field.type == :element
       end)
 
-    start_document = generate_start_document()
+    start_document = generate_start_document(module)
     end_document = generate_end_document()
     start_element = generate_start_element(elements)
     characters = generate_characters(elements)
@@ -146,19 +146,19 @@ defimpl Sassone.Builder, for: Any do
   defp recase(name, :snake), do: Recase.to_snake(name)
   defp recase(name, :kebab), do: Recase.to_kebab(name)
 
-  defp generate_start_document do
+  defp generate_start_document(module) do
     quote do
       @impl Sassone.Handler
       def handle_event(:start_document, _data, _state),
-        do: {:ok, %Parser{parsers: [__MODULE__]}}
+        do: {:ok, %Parser{struct: unquote(module), parsers: [__MODULE__]}}
     end
   end
 
-  defp generate_end_document() do
+  defp generate_end_document do
     quote do
       @impl Sassone.Handler
       def handle_event(:end_document, _data, %Parser{} = parser) do
-        {:ok, parser.state}
+        {:ok, {parser.struct, parser.state}}
       end
     end
   end
