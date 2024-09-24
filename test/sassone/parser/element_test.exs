@@ -1,5 +1,6 @@
 defmodule Sassone.Parser.ElementTest do
   use SassoneTest.ParsingCase, async: true
+  use ExUnitProperties
 
   alias Sassone.TestHandlers.StackHandler
 
@@ -15,8 +16,8 @@ defmodule Sassone.Parser.ElementTest do
   end
 
   test "parses element having namespaces" do
-    assert assert_parse("<ns:foo></ns:foo>") == [
-             {:start_element, {"ns", "foo", []}},
+    assert assert_parse("<ns:foo ns:bar=\"attr1\"></ns:foo>") == [
+             {:start_element, {"ns", "foo", [{"ns", "bar", "attr1"}]}},
              {:end_element, {"ns", "foo"}}
            ]
   end
@@ -40,10 +41,10 @@ defmodule Sassone.Parser.ElementTest do
 
     events = assert_parse(buffer, cdata_as_characters: false)
 
-    item_attributes = [{"name", "[日本語] Tom & Jerry"}, {"category", "movie"}]
+    item_attributes = [{nil, "name", "[日本語] Tom & Jerry"}, {nil, "category", "movie"}]
     assert [{:start_element, {nil, "item", ^item_attributes}} | events] = events
 
-    author_attributes = [{"name", "William Hanna & Joseph Barbera"}]
+    author_attributes = [{nil, "name", "William Hanna & Joseph Barbera"}]
     assert [{:start_element, {nil, "author", ^author_attributes}} | events] = events
     assert [{:end_element, {nil, "author"}} | events] = events
 
@@ -79,7 +80,7 @@ defmodule Sassone.Parser.ElementTest do
 
     events = assert_parse(buffer)
 
-    element = {nil, "foo", [{"foo", "FOO"}, {"bar", "BAR"}]}
+    element = {nil, "foo", [{nil, "foo", "FOO"}, {nil, "bar", "BAR"}]}
 
     assert events == [
              {:start_element, element},
@@ -89,7 +90,7 @@ defmodule Sassone.Parser.ElementTest do
     buffer = "<foo foo='Tom &amp; Jerry' bar='bar' />"
 
     events = assert_parse(buffer)
-    element = {nil, "foo", [{"foo", "Tom & Jerry"}, {"bar", "bar"}]}
+    element = {nil, "foo", [{nil, "foo", "Tom & Jerry"}, {nil, "bar", "bar"}]}
 
     assert events == [
              {:start_element, element},
@@ -208,31 +209,31 @@ defmodule Sassone.Parser.ElementTest do
 
   test "parses element attributes" do
     events = assert_parse("<foo abc='123' def=\"456\" g:hi='789' />")
-    tag = {nil, "foo", [{"abc", "123"}, {"def", "456"}, {"g:hi", "789"}]}
+    tag = {nil, "foo", [{nil, "abc", "123"}, {nil, "def", "456"}, {"g", "hi", "789"}]}
     assert find_event(events, :start_element, tag)
     assert find_event(events, :end_element, {nil, "foo"})
 
     events = assert_parse(~s(<foo abc = "ABC" />))
-    tag = {nil, "foo", [{"abc", "ABC"}]}
+    tag = {nil, "foo", [{nil, "abc", "ABC"}]}
     assert find_event(events, :start_element, tag)
     assert find_event(events, :end_element, {nil, "foo"})
 
     events = assert_parse(~s(<foo val="Tom &#x26; Jerry" />))
-    assert find_event(events, :start_element, {nil, "foo", [{"val", "Tom & Jerry"}]})
+    assert find_event(events, :start_element, {nil, "foo", [{nil, "val", "Tom & Jerry"}]})
     assert find_event(events, :end_element, {nil, "foo"})
 
     error = refute_parse(~s(<foo val="Tom &#x26 Jerry" />))
     assert Exception.message(error) == "unexpected byte \" \", expected token: :char_ref"
 
     events = assert_parse(~s(<foo val="Tom &#38; Jerry" />))
-    assert find_event(events, :start_element, {nil, "foo", [{"val", "Tom & Jerry"}]})
+    assert find_event(events, :start_element, {nil, "foo", [{nil, "val", "Tom & Jerry"}]})
     assert find_event(events, :end_element, {nil, "foo"})
 
     error = refute_parse(~s(<foo val="Tom &#38 Jerry" />))
     assert Exception.message(error) == "unexpected byte \" \", expected token: :char_ref"
 
     events = assert_parse(~s(<foo val="Tom &amp; Jerry" />))
-    assert find_event(events, :start_element, {nil, "foo", [{"val", "Tom & Jerry"}]})
+    assert find_event(events, :start_element, {nil, "foo", [{nil, "val", "Tom & Jerry"}]})
     assert find_event(events, :end_element, {nil, "foo"})
   end
 
@@ -257,7 +258,7 @@ defmodule Sassone.Parser.ElementTest do
       events = assert_parse("<foo #{attribute_name}='bar'></foo>")
 
       assert events == [
-               {:start_element, {nil, "foo", [{attribute_name, "bar"}]}},
+               {:start_element, {nil, "foo", [{nil, attribute_name, "bar"}]}},
                {:end_element, {nil, "foo"}}
              ]
     end
@@ -279,7 +280,7 @@ defmodule Sassone.Parser.ElementTest do
         |> IO.iodata_to_binary()
 
       events = assert_parse("<foo foo='#{attribute_value}'></foo>")
-      element = {nil, "foo", [{"foo", attribute_value}]}
+      element = {nil, "foo", [{nil, "foo", attribute_value}]}
 
       assert events == [{:start_element, element}, {:end_element, {nil, "foo"}}]
     end

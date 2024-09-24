@@ -6,16 +6,14 @@ defmodule Sassone.XMLTest do
   describe "element/3" do
     test "generates element in simple form" do
       assert element(nil, "foo", [], []) == {nil, "foo", [], []}
-      assert element(nil, "foo", [a: 1], []) == {nil, "foo", [{"a", "1"}], []}
-      assert element(nil, "foo", %{"a" => 1}, []) == {nil, "foo", [{"a", "1"}], []}
+      assert element(nil, "foo", [{"a", 1}], []) == {nil, "foo", [{"a", 1}], []}
     end
   end
 
   describe "empty_element/2" do
     test "generates empty element in simple form" do
       assert empty_element(nil, "foo", []) == {nil, "foo", [], []}
-      assert empty_element(nil, "foo", a: 1) == {nil, "foo", [{"a", "1"}], []}
-      assert empty_element(nil, "foo", %{"a" => 1}) == {nil, "foo", [{"a", "1"}], []}
+      assert empty_element(nil, "foo", [{"a", 1}]) == {nil, "foo", [{"a", 1}], []}
     end
   end
 
@@ -54,11 +52,6 @@ defmodule Sassone.XMLTest do
   describe "processing_instruction/3" do
     test "generates refence in simple form" do
       assert processing_instruction("foo", "bar") == {:processing_instruction, "foo", "bar"}
-      assert processing_instruction(:foo, "bar") == {:processing_instruction, "foo", "bar"}
-
-      assert_raise FunctionClauseError, fn ->
-        processing_instruction(nil, "bar")
-      end
     end
   end
 end

@@ -5,7 +5,7 @@ defmodule Sassone do
   Sassone provides functions to parse XML file in both binary and streaming way in compliant
   with [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w3.org/TR/xml/).
 
-  Sassone also offers DSL and API to build, compose and encode XML document.
+  Sassone also offers DSL and API to transform structs to and from XML documents.
   See "Encoder" section below for more information.
 
   ## Parser
@@ -68,49 +68,17 @@ defmodule Sassone do
   to encode the built element into XML binary.
 
       iex> import Sassone.XML
-      iex> element = element(nil, "person", [gender: "female"], "Alice")
-      {nil, "person", [{"gender", "female"}], ["Alice"]}
+      iex> element = element(nil, "person", [attribute(nil, "gender", "female")], ["Alice"])
+      {nil, "person", [{nil, "gender", "female"}], ["Alice"]}
       iex> Sassone.encode!(element, [version: "1.0"])
       "<?xml version=\"1.0\"?><person gender=\"female\">Alice</person>"
 
   See `Sassone.XML` for more XML building APIs.
-
-  Sassone also provides `Sassone.Builder` protocol to help composing structs into simple form.
-
-      defmodule Person do
-        @derive {
-          Sassone.Builder,
-          name: "person", attributes: [:gender], children: [:name, emails: &__MODULE__.build_emails/1]
-        }
-
-        import Sassone.XML
-
-        defstruct [:name, :gender, emails: []]
-
-        def build_emails(emails) do
-          count = Enum.count(emails)
-
-          element(
-            nil,
-            "emails",
-            [count: Enum.count(emails)],
-            Enum.map(emails, &element("email", [], &1))
-          )
-        end
-      end
-
-      iex> jack = %Person{gender: :male, name: "Jack", emails: ["john@example.com"]}
-      iex> john = %Person{gender: :male, name: "John"}
-      iex> import Sassone.XML
-      iex> root = element(nil, "people", [], [jack, john])
-      iex> Sassone.encode!(root, [version: "1.0"])
-      "<?xml version=\"1.0\"?><people><person gender=\"male\">Jack<emails count=\"1\"><email>john@example.com</email></emails></person><person gender=\"male\">John<emails count=\"0\"/></person></people>"
-
   """
 
   @compile {:inline, do_transform_stream: 4}
 
-  alias Sassone.{Encoder, Handler, ParseError, Parser, Prolog, XML}
+  alias Sassone.{Handler, ParseError, Parser, Prolog, XML}
   alias Sassone.Handler.Accumulating
   alias Sassone.Parser.State
 
@@ -155,11 +123,11 @@ defmodule Sassone do
       end
 
       iex> xml = "<?xml version='1.0' ?><foo bar='value'></foo>"
-      iex> Sassone.parse_string(xml, MyTestHandler, [])
+      iex> Sassone.parse_string(xml, Sassone.TestHandlers.MyTestHandler, [])
       {:ok,
        [{:end_document},
         {:end_element, {nil, "foo"}},
-        {:start_element, nil, "foo", [{"bar", "value"}]},
+        {:start_element, nil, "foo", [{nil, "bar", "value"}]},
         {:start_document, [version: "1.0"]}]}
   """
 
@@ -225,11 +193,11 @@ defmodule Sassone do
       end
 
       iex> stream = File.stream!("./test/support/fixture/foo.xml")
-      iex> Sassone.parse_stream(stream, MyTestHandler, [])
+      iex> Sassone.parse_stream(stream, Sassone.TestHandlers.MyTestHandler, [])
       {:ok,
        [{:end_document},
         {:end_element, {nil, "foo"}},
-        {:start_element, nil, "foo", [{"bar", "value"}]},
+        {:start_element, nil, "foo", [{nil, "bar", "value"}]},
         {:start_document, [version: "1.0"]}]}
 
   ## Memory usage
@@ -313,7 +281,7 @@ defmodule Sassone do
       iex> Enum.to_list Sassone.stream_events stream
       [
         start_document: [version: "1.0"],
-        start_element: {nil, "foo", [{"bar", "value"}]},
+        start_element: {nil, "foo", [{nil, "bar", "value"}]},
         end_element: {nil, "foo"}
       ]
       iex> Enum.to_list Sassone.stream_events ["<foo>unclosed value"]
@@ -389,7 +357,7 @@ defmodule Sassone do
   ## Examples
 
       iex> import Sassone.XML
-      iex> root = element(nil, "foo", [{"foo", "bar"}], "bar")
+      iex> root = element(nil, "foo", [attribute(nil, "foo", "bar")], ["bar"])
       iex> prolog = [version: "1.0"]
       iex> Sassone.encode!(root, prolog)
       "<?xml version=\\"1.0\\"?><foo foo=\\"bar\\">bar</foo>"
@@ -400,7 +368,7 @@ defmodule Sassone do
   @spec encode!(XML.element(), Prolog.t() | Keyword.t() | nil) :: String.t()
   def encode!(root, prolog \\ nil) do
     root
-    |> Encoder.encode_to_iodata(prolog)
+    |> encode_to_iodata(prolog)
     |> IO.iodata_to_binary()
   end
 
@@ -412,7 +380,7 @@ defmodule Sassone do
   ## Examples
 
       iex> import Sassone.XML
-      iex> root = element(nil, "foo", [{"foo", "bar"}], "bar")
+      iex> root = element(nil, "foo", [attribute(nil, "foo", "bar")], ["bar"])
       iex> prolog = [version: "1.0"]
       iex> Sassone.encode_to_iodata!(root, prolog)
       [
@@ -425,5 +393,123 @@ defmodule Sassone do
 
   """
   @spec encode_to_iodata!(XML.element(), Prolog.t() | Keyword.t() | nil) :: iodata()
-  def encode_to_iodata!(root, prolog \\ nil), do: Encoder.encode_to_iodata(root, prolog)
+  def encode_to_iodata!(root, prolog \\ nil), do: encode_to_iodata(root, prolog)
+
+  defp encode_to_iodata(root, prolog) do
+    prolog = prolog(prolog)
+    element = element(root)
+
+    [prolog | element]
+  end
+
+  defp prolog(%Prolog{} = prolog) do
+    [
+      ~c"<?xml",
+      version(prolog.version),
+      encoding(prolog.encoding),
+      standalone(prolog.standalone),
+      ~c"?>"
+    ]
+  end
+
+  defp prolog(prolog) when is_list(prolog) do
+    prolog
+    |> Prolog.from_keyword()
+    |> prolog()
+  end
+
+  defp prolog(nil), do: []
+
+  defp version(version), do: [?\s, ~c"version", ?=, ?", version, ?"]
+
+  defp encoding(nil), do: []
+  defp encoding(:utf8), do: [?\s, ~c"encoding", ?=, ?", ~c"utf-8", ?"]
+
+  defp encoding(encoding) when encoding in ["UTF-8", "utf-8"],
+    do: [?\s, ~c"encoding", ?=, ?", ~c(#{encoding}), ?"]
+
+  defp standalone(true), do: [?\s, ~c"standalone", ?=, ?", "yes", ?"]
+  defp standalone(_standalone), do: []
+
+  defp element({ns, tag_name, attributes, []}), do: [start_tag(ns, tag_name, attributes), ?/, ?>]
+
+  defp element({ns, tag_name, attributes, content}) do
+    [
+      start_tag(ns, tag_name, attributes),
+      ?>,
+      content(content),
+      end_tag(ns, tag_name, content)
+    ]
+  end
+
+  defp start_tag(nil, tag_name, attributes), do: [?<, tag_name | attributes(attributes)]
+  defp start_tag(ns, tag_name, attributes), do: [?<, ns, ?:, tag_name | attributes(attributes)]
+
+  defp attributes([]), do: []
+
+  defp attributes([{nil, name, value} | attributes]),
+    do: [?\s, name, ?=, ?", escape(value, 0, value), ?" | attributes(attributes)]
+
+  defp attributes([{namespace, name, value} | attributes]),
+    do: [?\s, namespace, ?:, name, ?=, ?", escape(value, 0, value), ?" | attributes(attributes)]
+
+  defp content([]), do: []
+
+  defp content([{:characters, characters} | elements]) do
+    [characters(characters) | content(elements)]
+  end
+
+  defp content([{:cdata, cdata} | elements]) do
+    [cdata(cdata) | content(elements)]
+  end
+
+  defp content([{:reference, reference} | elements]) do
+    [reference(reference) | content(elements)]
+  end
+
+  defp content([{:comment, comment} | elements]) do
+    [comment(comment) | content(elements)]
+  end
+
+  defp content([{:processing_instruction, name, content} | elements]) do
+    [processing_instruction(name, content) | content(elements)]
+  end
+
+  defp content([characters | elements]) when is_binary(characters) do
+    [characters | content(elements)]
+  end
+
+  defp content([element | elements]) do
+    [element(element) | content(elements)]
+  end
+
+  defp end_tag(nil, tag_name, _other), do: [?<, ?/, tag_name, ?>]
+  defp end_tag(ns, tag_name, _other), do: [?<, ?/, ns, ?:, tag_name, ?>]
+
+  defp characters(characters), do: escape(characters, 0, characters)
+
+  escapes = [{?<, ~c"&lt;"}, {?>, ~c"&gt;"}, {?&, ~c"&amp;"}, {?", ~c"&quot;"}, {?', ~c"&apos;"}]
+
+  for {match, insert} <- escapes do
+    defp escape(<<unquote(match), rest::bits>>, len, original),
+      do: [binary_part(original, 0, len), unquote(insert) | escape(rest, 0, rest)]
+  end
+
+  defp escape(<<>>, _len, original), do: original
+
+  defp escape(<<_, rest::bits>>, len, original), do: escape(rest, len + 1, original)
+
+  defp cdata(characters), do: [~c"<![CDATA[", characters | ~c"]]>"]
+
+  defp reference({:entity, reference}), do: [?&, reference, ?;]
+  defp reference({:hexadecimal, reference}), do: [?&, ?x, Integer.to_string(reference, 16), ?;]
+  defp reference({:decimal, reference}), do: [?&, ?x, Integer.to_string(reference, 10), ?;]
+
+  defp comment(comment), do: [~c"<!--", escape_comment(comment, comment) | ~c"-->"]
+
+  defp escape_comment(<<?->>, original), do: [original, ?\s]
+  defp escape_comment(<<>>, original), do: original
+  defp escape_comment(<<_char, rest::bits>>, original), do: escape_comment(rest, original)
+
+  defp processing_instruction(name, content), do: [~c"<?", name, ?\s, content | ~c"?>"]
 end

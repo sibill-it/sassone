@@ -1,7 +1,7 @@
-defmodule Sassone.Parser.Builder do
+defmodule Sassone.Parser.Generator do
   @moduledoc false
 
-  import Sassone.Parser.Builder.{BufferingHelper, Guards, Lookahead}
+  import Sassone.Parser.Generator.{BufferingHelper, Guards, Lookahead}
 
   defmacro __using__(options) do
     quote location: :keep do
@@ -717,7 +717,7 @@ defmodule Sassone.Parser.Builder do
       defp sattribute(<<buffer::bits>>, more?, original, pos, state, attributes) do
         lookahead buffer, @streaming do
           char <> rest when is_ascii_name_start_char(char) ->
-            attribute_name(rest, more?, original, pos, state, attributes, 1)
+            attribute_name(rest, more?, original, pos, state, attributes, nil, 1)
 
           ">" <> rest ->
             %{stack: [{ns, tag_name} | _]} = state
@@ -759,6 +759,7 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               attributes,
+              nil,
               Parser.compute_char_len(codepoint)
             )
 
@@ -774,13 +775,17 @@ defmodule Sassone.Parser.Builder do
         end
       end
 
-      defp attribute_name(<<buffer::bits>>, more?, original, pos, state, attributes, len) do
+      defp attribute_name(<<buffer::bits>>, more?, original, pos, state, attributes, ns, len) do
         lookahead(buffer, @streaming) do
+          char <> rest when is_ns_separator(char) ->
+            ns = binary_part(original, pos, len)
+            attribute_name(rest, more?, original, pos + len + 1, state, attributes, ns, 0)
+
           char <> rest when is_ascii_name_char(char) ->
-            attribute_name(rest, more?, original, pos, state, attributes, len + 1)
+            attribute_name(rest, more?, original, pos, state, attributes, ns, len + 1)
 
           token in unquote(utf8_binaries()) when more? ->
-            halt!(attribute_name(token, more?, original, pos, state, attributes, len))
+            halt!(attribute_name(token, more?, original, pos, state, attributes, ns, len))
 
           <<codepoint::utf8>> <> rest when is_utf8_name_char(codepoint) ->
             attribute_name(
@@ -790,35 +795,53 @@ defmodule Sassone.Parser.Builder do
               pos,
               state,
               attributes,
+              ns,
               len + Parser.compute_char_len(codepoint)
             )
 
           _ in [""] when more? ->
-            halt!(attribute_name("", more?, original, pos, state, attributes, len))
+            halt!(attribute_name("", more?, original, pos, state, attributes, ns, len))
 
           _ ->
             attribute_name = binary_part(original, pos, len)
-            attribute_eq(buffer, more?, original, pos + len, state, attributes, attribute_name)
+
+            attribute_eq(
+              buffer,
+              more?,
+              original,
+              pos + len,
+              state,
+              attributes,
+              {ns, attribute_name}
+            )
         end
       end
 
-      defp attribute_eq(<<buffer::bits>>, more?, original, pos, state, attributes, att_name) do
+      defp attribute_eq(<<buffer::bits>>, more?, original, pos, state, attributes, {ns, att_name}) do
         lookahead(buffer, @streaming) do
           "=" <> rest ->
-            attribute_quote(rest, more?, original, pos + 1, state, attributes, att_name)
+            attribute_quote(rest, more?, original, pos + 1, state, attributes, {ns, att_name})
 
           whitespace <> rest when is_whitespace(whitespace) ->
-            attribute_eq(rest, more?, original, pos + 1, state, attributes, att_name)
+            attribute_eq(rest, more?, original, pos + 1, state, attributes, {ns, att_name})
 
           _ in [""] when more? ->
-            halt!(attribute_eq("", more?, original, pos, state, attributes, att_name))
+            halt!(attribute_eq("", more?, original, pos, state, attributes, {ns, att_name}))
 
           _ ->
             {:error, %ParseError{reason: {:token, :eq}, binary: original, position: pos}}
         end
       end
 
-      defp attribute_quote(<<buffer::bits>>, more?, original, pos, state, attributes, att_name) do
+      defp attribute_quote(
+             <<buffer::bits>>,
+             more?,
+             original,
+             pos,
+             state,
+             attributes,
+             {ns, att_name}
+           ) do
         lookahead buffer, @streaming do
           open_quote <> rest when open_quote in [?", ?'] ->
             att_value(
@@ -829,16 +852,16 @@ defmodule Sassone.Parser.Builder do
               state,
               attributes,
               open_quote,
-              att_name,
+              {ns, att_name},
               "",
               0
             )
 
           whitespace <> rest when is_whitespace(whitespace) ->
-            attribute_quote(rest, more?, original, pos + 1, state, attributes, att_name)
+            attribute_quote(rest, more?, original, pos + 1, state, attributes, {ns, att_name})
 
           _ in [""] when more? ->
-            halt!(attribute_quote("", more?, original, pos, state, attributes, att_name))
+            halt!(attribute_quote("", more?, original, pos, state, attributes, {ns, att_name}))
 
           _ ->
             {:error, %ParseError{reason: {:token, :quote}, binary: original, position: pos}}
@@ -853,14 +876,14 @@ defmodule Sassone.Parser.Builder do
              state,
              attributes,
              open_quote,
-             att_name,
+             {ns, att_name} = ns_att_name,
              acc,
              len
            ) do
         lookahead(buffer, @streaming) do
           ^open_quote <> rest ->
             att_value = [acc | binary_part(original, pos, len)] |> IO.iodata_to_binary()
-            attributes = [{att_name, att_value} | attributes]
+            attributes = [{ns, att_name, att_value} | attributes]
 
             sattribute(rest, more?, original, pos + len + 1, state, attributes)
 
@@ -874,7 +897,7 @@ defmodule Sassone.Parser.Builder do
                 state,
                 attributes,
                 open_quote,
-                att_name,
+                {ns, att_name},
                 acc,
                 len
               )
@@ -893,7 +916,7 @@ defmodule Sassone.Parser.Builder do
               state,
               attributes,
               open_quote,
-              att_name,
+              ns_att_name,
               acc,
               0
             )
@@ -911,7 +934,7 @@ defmodule Sassone.Parser.Builder do
               state,
               attributes,
               open_quote,
-              att_name,
+              ns_att_name,
               acc,
               0
             )
@@ -929,7 +952,7 @@ defmodule Sassone.Parser.Builder do
               state,
               attributes,
               open_quote,
-              att_name,
+              ns_att_name,
               acc,
               0
             )
@@ -943,7 +966,7 @@ defmodule Sassone.Parser.Builder do
               state,
               attributes,
               open_quote,
-              att_name,
+              ns_att_name,
               acc,
               len + 1
             )
@@ -958,7 +981,7 @@ defmodule Sassone.Parser.Builder do
                 state,
                 attributes,
                 open_quote,
-                att_name,
+                ns_att_name,
                 acc,
                 len
               )
@@ -975,7 +998,7 @@ defmodule Sassone.Parser.Builder do
               state,
               attributes,
               open_quote,
-              att_name,
+              ns_att_name,
               acc,
               len
             )
@@ -1074,7 +1097,7 @@ defmodule Sassone.Parser.Builder do
              more?,
              original,
              pos,
-             state,
+             %State{} = state,
              attributes,
              open_quote,
              att_name,
@@ -1130,7 +1153,7 @@ defmodule Sassone.Parser.Builder do
 
           ";" <> rest ->
             name = binary_part(original, pos, len)
-            converted = Parser.convert_entity_reference(name, state)
+            converted = Parser.convert_entity_reference(name, state.expand_entity)
             acc = [acc | converted]
 
             att_value(
@@ -1542,7 +1565,7 @@ defmodule Sassone.Parser.Builder do
         end
       end
 
-      defp element_entity_ref(<<buffer::bits>>, more?, original, pos, state, acc, len) do
+      defp element_entity_ref(<<buffer::bits>>, more?, original, pos, %State{} = state, acc, len) do
         lookahead buffer, @streaming do
           char <> rest when is_ascii_name_char(char) ->
             element_entity_ref(rest, more?, original, pos, state, acc, len + 1)
@@ -1560,7 +1583,7 @@ defmodule Sassone.Parser.Builder do
 
           ";" <> rest ->
             name = binary_part(original, pos, len)
-            char = Parser.convert_entity_reference(name, state)
+            char = Parser.convert_entity_reference(name, state.expand_entity)
             chardata(rest, more?, original, pos + len + 1, state, [acc | char], 0)
 
           _ in [""] when more? ->

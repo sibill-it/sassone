@@ -1,223 +1,444 @@
 defprotocol Sassone.Builder do
   @moduledoc """
-  Protocol for building XML content.
+  Protocol to implement XML serialization and deserialization for a struct.
 
-  ## Deriving
+  You can derive or implement this protocol for your structs
 
-  This helps to generate XML content simple form in trivial cases.
+  When deriving the protocol, these are the supported options:
 
-  There are a few required options:
-
-  * `name` - tag name of generated XML element.
-  * `attributes` - struct keys to be encoded as attributes.
-  * `children` - a list of entries to be collected as element content. Each entry could be either:
-    * key - value will be used as the content.
-    * two-element tuple of key and transformer - struct value will be passed to the transformer.
-      Transformer function could be a captured public function or a tuple of module and function.
-
-  ### Examples
-
-      defmodule Person do
-        @derive {
-          Sassone.Builder,
-          name: "person", attributes: [:gender], children: [:name, emails: &__MODULE__.build_emails/1]
-        }
-
-        import Sassone.XML
-
-        defstruct [:name, :gender, emails: []]
-
-        def build_emails(emails) do
-          count = Enum.count(emails)
-
-          element(
-            nil,
-            "emails",
-            [count: Enum.count(emails)],
-            Enum.map(emails, &element("email", [], &1))
-          )
-        end
-      end
-
-      iex> person = %Person{name: "Alice", gender: "female", emails: ["alice@foo.com", "alice@bar.com"]}
-      iex> Sassone.Builder.build(person)
-      {nil, "person", [{"gender", "female"}], ["Alice", {nil, "emails", [{"count", "2"}], [{nil, "email", [], ["alice@foo.com"]}, {nil, "email", [], ["alice@bar.com"]}]}]}
-
-  Custom implementation could be done by implementing protocol:
-
-      defmodule User do
-        defstruct [:username, :name]
-      end
-
-      defimpl Sassone.Builder, for: User do
-        import Sassone.XML
-
-        def build(user) do
-          element(
-            nil,
-            "Person",
-            [{"userName", user.username}],
-            [element("Name", [], user.name)]
-          )
-        end
-      end
-
-      iex> user = %User{name: "Alice", username: "alice99"}
-      iex> Sassone.Builder.build(user)
-      {nil, "Person", [{"userName", "alice99"}], [{nil, "Name", [], ["Alice"]}]}
+  #{Sassone.Builder.Field.__schema__() |> NimbleOptions.new!() |> NimbleOptions.docs()}
   """
+
+  alias Sassone.Builder.Field
+
+  @typedoc "A strut implementing `Sassone.Builder`"
+  @type t :: struct()
 
   @doc """
-  Builds `content` to XML content in simple form.
+  Returns the mapping of attributes for the struct.
   """
+  @spec attributes(t()) :: [Field.t()]
+  def attributes(struct)
 
-  @spec build(content :: term()) :: Sassone.XML.content() | list(Sassone.XML.content())
+  @doc """
+  Builds the struct for encoding with `Sassone.encode!/2`
+  """
+  def build(struct)
 
-  def build(content)
+  @doc """
+  Returns the mapping of elements for the struct.
+  """
+  @spec elements(t()) :: [Field.t()]
+  def elements(t)
+
+  @doc """
+  Returns the XML namespace for the struct.
+  """
+  @spec namespace(t()) :: String.t() | nil
+  def namespace(t)
+
+  @doc """
+  Returns the `Sassone.Handler` implementation for the struct.
+  """
+  @spec handler(t()) :: module()
+  def handler(t)
+
+  @doc """
+  Returns the XML root element name for the struct.
+  """
+  @spec root_element(t()) :: String.t()
+  def root_element(t)
 end
 
 defimpl Sassone.Builder, for: Any do
-  defmacro __deriving__(module, _struct, options) do
+  alias Sassone.Builder
+  alias Sassone.Builder.Field
+
+  @moduledoc """
+  Default implementation of the `Sassone.Builder` protocol for any struct.
+
+  Options:
+  #{NimbleOptions.docs(Field.__schema__())}
+  """
+
+  defmacro __deriving__(module, struct, options) do
+    options =
+      options
+      |> normalize_default_options()
+      |> Macro.prewalk(&Macro.expand(&1, __CALLER__))
+      |> NimbleOptions.validate!(NimbleOptions.new!(Field.__schema__()))
+
+    struct_members = struct |> Map.keys() |> MapSet.new()
+    names = options[:fields] |> Keyword.keys() |> MapSet.new()
+
+    if not MapSet.subset?(names, struct_members) do
+      difference = MapSet.difference(names, struct_members)
+
+      raise "Mismatching fields in the declaration. Missing fields: #{inspect(MapSet.to_list(difference))}"
+    end
+
+    fields =
+      Enum.map(options[:fields], fn {name, field_options} ->
+        xml_name = field_options[:name] || recase(to_string(name), options[:case])
+        %Field{struct(Field, field_options) | xml_name: xml_name, name: name}
+      end)
+
+    {elements, attributes} =
+      Enum.split_with(fields, fn %Field{} = field ->
+        field.type == :element
+      end)
+
+    start_document = generate_start_document(module)
+    end_document = generate_end_document()
+    start_element = generate_start_element(elements)
+    characters = generate_characters(elements)
+    end_element = generate_end_element(elements)
+
+    if options[:debug] do
+      end_document |> Macro.to_string() |> IO.puts()
+      start_element |> Macro.to_string() |> IO.puts()
+      characters |> Macro.to_string() |> IO.puts()
+      end_element |> Macro.to_string() |> IO.puts()
+    end
+
     quote do
       defimpl Sassone.Builder, for: unquote(module) do
+        @behaviour Sassone.Handler
+
         alias Sassone.XML
+        alias Sassone.Builder.Parser
 
-        def build(struct) do
-          attributes =
-            struct
-            |> Map.take(unquote(options[:attributes] || []))
-            |> Enum.to_list()
+        unquote(start_document)
+        unquote(end_document)
+        unquote(start_element)
+        unquote(characters)
+        unquote(end_element)
 
-          children =
-            Enum.map(
-              unquote(options[:children] || []),
-              &unquote(__MODULE__).fetch_value(struct, &1)
-            )
-
-          XML.element(unquote(options[:namespace]), unquote(options[:name]), attributes, children)
-        end
+        def attributes(_t), do: unquote(Macro.escape(attributes))
+        def build(t), do: XML.build(t, Builder.root_element(t))
+        def elements(_t), do: unquote(Macro.escape(elements))
+        def handler(_t), do: __MODULE__
+        def namespace(_t), do: unquote(options[:namespace])
+        def root_element(_t), do: unquote(options[:root_element])
       end
     end
   end
 
-  def fetch_value(struct, {key, {transformer_module, transformer_fun}}) do
-    apply(transformer_module, transformer_fun, [Map.fetch!(struct, key)])
+  def attributes(_t), do: []
+  def build(_t), do: nil
+  def elements(_t), do: []
+  def handler(_t), do: nil
+  def namespace(_t), do: nil
+  def root_element(_t), do: "Root"
+
+  defp normalize_default_options(options) do
+    {_, options} =
+      get_and_update_in(options, [:fields, Access.all()], fn
+        field when is_tuple(field) -> {field, field}
+        field -> {field, {field, []}}
+      end)
+
+    options
   end
 
-  def fetch_value(struct, {key, transformer_fun}) do
-    apply(transformer_fun, [Map.fetch!(struct, key)])
+  defp recase(name, :pascal), do: Recase.to_pascal(name)
+  defp recase(name, :camel), do: Recase.to_camel(name)
+  defp recase(name, :snake), do: Recase.to_snake(name)
+  defp recase(name, :kebab), do: Recase.to_kebab(name)
+
+  defp generate_start_document(module) do
+    quote do
+      @impl Sassone.Handler
+      def handle_event(:start_document, _data, _state),
+        do: {:ok, %Parser{struct: unquote(module), parsers: [__MODULE__]}}
+    end
   end
 
-  def fetch_value(struct, key), do: Map.fetch!(struct, key)
-
-  def build(%_{} = struct) do
-    raise Protocol.UndefinedError,
-      protocol: @protocol,
-      value: struct,
-      description: """
-      Sassone.Builder.Content doesn't know how to build this struct.
-
-      You can derive the implementation by specifying in the module.
-
-      @derive {
-        Sassone.Builder.Content,
-        [
-          name: "person",
-          attributes: [:gender, :telephone],
-          children: [:name]
-        ]
-      }
-      defstruct ...
-      """
-  end
-end
-
-defimpl Sassone.Builder, for: Tuple do
-  def build({type, _} = form)
-      when type in [:characters, :comment, :cdata, :reference],
-      do: form
-
-  def build({_ns, _name, _attributes, _content} = form), do: form
-
-  def build(other) do
-    raise Protocol.UndefinedError,
-      protocol: @protocol,
-      value: other,
-      description: "cannot build content with tuple"
-  end
-end
-
-defimpl Sassone.Builder, for: BitString do
-  def build(binary) when is_binary(binary) do
-    Sassone.XML.characters(binary)
+  defp generate_end_document do
+    quote do
+      @impl Sassone.Handler
+      def handle_event(:end_document, _data, %Parser{} = parser) do
+        {:ok, {parser.struct, parser.state}}
+      end
+    end
   end
 
-  def build(bitstring) do
-    raise Protocol.UndefinedError,
-      protocol: @protocol,
-      value: bitstring,
-      description: "cannot build content with a bitstring"
+  defp generate_start_element(elements) do
+    Enum.filter(elements, fn %Field{} = field -> field.parse end)
+    |> Enum.reduce(
+      [
+        quote do
+          @impl Sassone.Handler
+          def handle_event(:start_element, _data, state), do: {:ok, state}
+        end
+      ],
+      fn
+        %Field{struct: nil} = field, functions ->
+          [
+            quote do
+              @impl Sassone.Handler
+              def handle_event(
+                    :start_element,
+                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
+                    %Parser{} = parser
+                  ) do
+                elements = [unquote(field.xml_name) | parser.elements]
+                keys = [unquote(field.name) | parser.keys]
+                parser = %Parser{parser | elements: elements, keys: keys}
+
+                {:ok, parser}
+              end
+            end
+            | functions
+          ]
+
+        %Field{many: false} = field, functions ->
+          [
+            quote do
+              @impl Sassone.Handler
+              def handle_event(
+                    :start_element,
+                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
+                    %Parser{} = parser
+                  ) do
+                elements = [unquote(field.xml_name) | parser.elements]
+                keys = [unquote(field.name) | parser.keys]
+                next_parser = unquote(Builder.handler(struct(field.struct)))
+                parsers = [next_parser | parser.parsers]
+                state = put_in(parser.state, Enum.reverse(keys), %{})
+
+                parser = %Parser{
+                  parser
+                  | elements: elements,
+                    keys: keys,
+                    parsers: parsers,
+                    state: state
+                }
+
+                {:cont, next_parser, parser}
+              end
+            end
+            | functions
+          ]
+
+        %Field{many: true} = field, functions ->
+          [
+            quote do
+              @impl Sassone.Handler
+              def handle_event(
+                    :start_element,
+                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
+                    %Parser{} = parser
+                  ) do
+                elements = [unquote(field.xml_name) | parser.elements]
+                keys = [unquote(field.name) | parser.keys]
+                next_parser = unquote(Builder.handler(struct(field.struct)))
+                parsers = [next_parser | parser.parsers]
+
+                state =
+                  update_in(parser.state, Enum.reverse(keys), fn
+                    nil -> [%{}]
+                    values -> values ++ [%{}]
+                  end)
+
+                parser = %Parser{
+                  parser
+                  | elements: [:__LAST__ | elements],
+                    keys: [Access.at(-1) | keys],
+                    parsers: parsers,
+                    state: state
+                }
+
+                {:cont, next_parser, parser}
+              end
+            end
+            | functions
+          ]
+
+        _field, functions ->
+          functions
+      end
+    )
   end
-end
 
-defimpl Sassone.Builder, for: Atom do
-  def build(nil), do: ""
+  defp generate_characters(elements) do
+    Enum.filter(elements, fn %Field{} = field -> field.parse end)
+    |> Enum.reduce(
+      [
+        quote do
+          @impl Sassone.Handler
+          def handle_event(:characters, _data, state), do: {:ok, state}
+        end
+      ],
+      fn
+        %Field{struct: nil, many: false} = field, functions ->
+          [
+            quote do
+              @impl Sassone.Handler
+              def handle_event(
+                    :characters,
+                    data,
+                    %Parser{
+                      elements: [unquote(field.xml_name) | _],
+                      keys: [unquote(field.name) | _]
+                    } = parser
+                  ) do
+                state =
+                  update_in(parser.state, Enum.reverse(parser.keys), fn
+                    nil -> String.trim(data)
+                    values -> values <> String.trim(data)
+                  end)
 
-  def build(value) do
-    value
-    |> Atom.to_string()
-    |> Sassone.XML.characters()
+                parser = %Parser{parser | state: state}
+
+                {:ok, parser}
+              end
+            end
+            | functions
+          ]
+
+        %Field{struct: nil, many: true} = field, functions ->
+          [
+            quote do
+              @impl Sassone.Handler
+              def handle_event(
+                    :characters,
+                    data,
+                    %Parser{
+                      elements: [unquote(field.xml_name) | _],
+                      keys: [unquote(field.name) | _]
+                    } = parser
+                  ) do
+                state =
+                  update_in(parser.state, Enum.reverse(parser.keys), fn
+                    nil -> [String.trim(data)]
+                    values -> values ++ [String.trim(data)]
+                  end)
+
+                parser = %Parser{parser | state: state}
+
+                {:ok, parser}
+              end
+            end
+            | functions
+          ]
+
+        _field, functions ->
+          functions
+      end
+    )
   end
-end
 
-defimpl Sassone.Builder, for: Integer do
-  def build(value) do
-    value
-    |> Integer.to_string()
-    |> Sassone.XML.characters()
+  defp generate_end_element(elements) do
+    Enum.filter(elements, fn %Field{} = field -> field.parse end)
+    |> Enum.reduce(
+      [
+        quote do
+          @impl Sassone.Handler
+          def handle_event(
+                :end_element,
+                {_ns, element},
+                %Parser{
+                  keys: [_index, _key | keys],
+                  elements: [:__LAST__, element | elements],
+                  parsers: [_cur_paser, prev_parser | parsers]
+                } = parser
+              ) do
+            parser = %Parser{
+              parser
+              | keys: keys,
+                elements: elements,
+                parsers: [prev_parser | parsers]
+            }
+
+            {:cont, prev_parser, parser}
+          end
+        end,
+        quote do
+          @impl Sassone.Handler
+          def handle_event(
+                :end_element,
+                {_ns, element},
+                %Parser{
+                  keys: [_key | keys],
+                  elements: [element | elements],
+                  parsers: [_cur_paser, prev_parser | parsers]
+                } = parser
+              ) do
+            parser = %Parser{
+              parser
+              | keys: keys,
+                elements: elements,
+                parsers: [prev_parser | parsers]
+            }
+
+            {:cont, prev_parser, parser}
+          end
+        end,
+        quote do
+          @impl Sassone.Handler
+          def handle_event(
+                :end_element,
+                {_ns, element},
+                %Parser{
+                  keys: [_key | keys],
+                  elements: [element | elements],
+                  parsers: [_cur_paser, prev_parser | parsers]
+                } = parser
+              ) do
+            parser = %Parser{
+              parser
+              | keys: keys,
+                elements: elements,
+                parsers: [prev_parser | parsers]
+            }
+
+            {:cont, prev_parser, parser}
+          end
+        end,
+        quote do
+          @impl Sassone.Handler
+          def handle_event(:end_element, _data, state), do: {:ok, state}
+        end
+      ],
+      fn
+        %Field{struct: nil} = field, functions ->
+          [
+            quote do
+              @impl Sassone.Handler
+              def handle_event(
+                    :end_element,
+                    {_ns, unquote(field.xml_name) = element},
+                    %Parser{keys: [_key | keys], elements: [element | elements]} = parser
+                  ) do
+                parser = %Parser{parser | keys: keys, elements: elements}
+
+                {:ok, parser}
+              end
+            end
+            | functions
+          ]
+
+        %Field{many: false} = field, functions ->
+          [
+            quote do
+              @impl Sassone.Handler
+              def handle_event(
+                    :end_element,
+                    {_ns, unquote(field.xml_name) = element},
+                    %Parser{keys: [_key | keys], elements: [element | elements]} = parser
+                  ) do
+                parser = %Parser{parser | keys: keys, elements: elements}
+
+                {:ok, parser}
+              end
+            end
+            | functions
+          ]
+
+        _field, functions ->
+          functions
+      end
+    )
   end
-end
-
-defimpl Sassone.Builder, for: Float do
-  def build(value) do
-    value
-    |> Float.to_string()
-    |> Sassone.XML.characters()
-  end
-end
-
-defimpl Sassone.Builder, for: NaiveDateTime do
-  def build(value) do
-    value
-    |> NaiveDateTime.to_iso8601()
-    |> Sassone.XML.characters()
-  end
-end
-
-defimpl Sassone.Builder, for: DateTime do
-  def build(value) do
-    value
-    |> DateTime.to_iso8601()
-    |> Sassone.XML.characters()
-  end
-end
-
-defimpl Sassone.Builder, for: Date do
-  def build(value) do
-    value
-    |> Date.to_iso8601()
-    |> Sassone.XML.characters()
-  end
-end
-
-defimpl Sassone.Builder, for: Time do
-  def build(value) do
-    value
-    |> Time.to_iso8601()
-    |> Sassone.XML.characters()
-  end
-end
-
-defimpl Sassone.Builder, for: List do
-  def build(items), do: Enum.map(items, &Sassone.Builder.build/1)
 end

@@ -1,7 +1,8 @@
 defmodule Sassone.Parser.PrologTest do
   use SassoneTest.ParsingCase, async: true
+  use ExUnitProperties
 
-  alias SassoneTest.{ControlHandler, PrologHandler}
+  alias Sassone.TestHandlers.{ControlHandler, PrologHandler}
 
   describe "welformed XML prologs" do
     test "with all properties declared" do

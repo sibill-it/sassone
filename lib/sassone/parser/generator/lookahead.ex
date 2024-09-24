@@ -1,4 +1,4 @@
-defmodule Sassone.Parser.Builder.Lookahead do
+defmodule Sassone.Parser.Generator.Lookahead do
   @moduledoc false
 
   def edge_ngrams(word) do

@@ -1,7 +1,7 @@
 defmodule SassoneTest do
   use SassoneTest.ParsingCase, async: true
 
-  alias SassoneTest.{ControlHandler, StackHandler}
+  alias Sassone.TestHandlers.{ControlHandler, StackHandler}
 
   doctest Sassone
 
@@ -154,20 +154,20 @@ defmodule SassoneTest do
 
     data = "<foo><bar></bee></foo>"
     assert {:error, exception} = parse(data, StackHandler, [])
-    assert Exception.message(exception) == "unexpected ending tag \"bee\", expected tag: \"bar\""
+    assert Exception.message(exception) == "unexpected end tag \"bee\", expected tag: \"bar\""
 
     data = "<foo>Some data</foo    bar >"
     assert {:error, exception} = parse(data, StackHandler, [])
 
     assert Exception.message(exception) ==
-             "unexpected ending tag \"foo   \", expected tag: \"foo\""
+             "unexpected end tag \"foo   \", expected tag: \"foo\""
   end
 
   describe "encode!/2" do
     import Sassone.XML
 
     test "encodes XML document into string" do
-      root = element(nil, "foo", [], "foo")
+      root = element(nil, "foo", [], ["foo"])
       assert Sassone.encode!(root, version: "1.0") == ~s(<?xml version="1.0"?><foo>foo</foo>)
     end
   end
@@ -176,7 +176,7 @@ defmodule SassoneTest do
     import Sassone.XML
 
     test "encodes XML document into IO data" do
-      root = element(nil, "foo", [], "foo")
+      root = element(nil, "foo", [], ["foo"])
       assert xml = Sassone.encode_to_iodata!(root, version: "1.0")
       assert is_list(xml)
       assert IO.iodata_to_binary(xml) == ~s(<?xml version="1.0"?><foo>foo</foo>)
@@ -254,4 +254,193 @@ defmodule SassoneTest do
   end
 
   def convert_entity("unknown"), do: "known"
+
+  describe "encode" do
+    test "encodes empty element" do
+      document = {
+        nil,
+        "person",
+        [{nil, "first_name", "John"}, {nil, "last_name", "Doe"}],
+        []
+      }
+
+      xml = Sassone.encode!(document, version: "1.0")
+
+      assert xml == ~s(<?xml version="1.0"?><person first_name="John" last_name="Doe"/>)
+    end
+
+    test "encodes normal element" do
+      content = [{:characters, "Hello my name is John Doe"}]
+
+      document = {
+        nil,
+        "person",
+        [{nil, "first_name", "John"}, {nil, "last_name", "Doe"}],
+        content
+      }
+
+      xml = Sassone.encode!(document, version: "1.0")
+
+      assert xml ==
+               ~s(<?xml version="1.0"?><person first_name="John" last_name="Doe">Hello my name is John Doe</person>)
+    end
+
+    test "encodes attributes with escapable characters" do
+      xml = Sassone.encode!({nil, "person", [{nil, "first_name", "&'\"<>"}], []})
+
+      assert xml == ~s(<person first_name="&amp;&apos;&quot;&lt;&gt;"/>)
+    end
+
+    test "encodes CDATA" do
+      children = [{:cdata, "Tom & Jerry"}]
+
+      document = {nil, "person", [], children}
+      xml = Sassone.encode!(document, version: "1.0")
+
+      assert xml == ~s(<?xml version="1.0"?><person><![CDATA[Tom & Jerry]]></person>)
+    end
+
+    test "encodes characters to references" do
+      content = [
+        {:characters, "Tom & Jerry"}
+      ]
+
+      document = {nil, "movie", [], content}
+      xml = Sassone.encode!(document, version: "1.0")
+
+      assert xml == ~s(<?xml version="1.0"?><movie>Tom &amp; Jerry</movie>)
+    end
+
+    test "supports mentioning utf-8 encoding in the prolog (as atom)" do
+      document = {nil, "body", [], []}
+
+      xml = Sassone.encode!(document, version: "1.0", encoding: :utf8)
+      assert xml == ~s(<?xml version="1.0" encoding="utf-8"?><body/>)
+    end
+
+    test "supports mentioning UTF-8 encoding in the prolog (as string)" do
+      document = {nil, "body", [], []}
+
+      xml = Sassone.encode!(document, version: "1.0", encoding: "UTF-8")
+      assert xml == ~s(<?xml version="1.0" encoding="UTF-8"?><body/>)
+
+      xml = Sassone.encode!(document, version: "1.0", encoding: "utf-8")
+      assert xml == ~s(<?xml version="1.0" encoding="utf-8"?><body/>)
+    end
+
+    test "encodes reference" do
+      content = [
+        {:reference, {:entity, "foo"}},
+        {:reference, {:hexadecimal, ?<}},
+        {:reference, {:decimal, ?<}}
+      ]
+
+      document = {nil, "movie", [], content}
+      xml = Sassone.encode!(document, [])
+
+      assert xml == ~s(<?xml version="1.0"?><movie>&foo;&x3C;&x60;</movie>)
+    end
+
+    test "encodes comments" do
+      content = [
+        {:comment, "This is obviously a comment"},
+        {:comment, "A+, A, A-"}
+      ]
+
+      document = {nil, "movie", [], content}
+      xml = Sassone.encode!(document)
+
+      assert xml == ~s(<movie><!--This is obviously a comment--><!--A+, A, A- --></movie>)
+    end
+
+    test "encodes processing instruction" do
+      content = [
+        {:processing_instruction, "xml-stylesheet", "type=\"text/xsl\" href=\"style.xsl\""}
+      ]
+
+      document = {nil, "movie", [], content}
+      xml = Sassone.encode!(document, version: "1.0")
+
+      assert xml ==
+               ~s(<?xml version="1.0"?><movie><?xml-stylesheet type="text/xsl" href="style.xsl"?></movie>)
+    end
+
+    test "encodes nested element" do
+      children = [
+        {nil, "address", [{nil, "street", "foo"}, {nil, "city", "bar"}], []},
+        {nil, "gender", [], [{:characters, "male"}]}
+      ]
+
+      document =
+        {nil, "person", [{nil, "first_name", "John"}, {nil, "last_name", "Doe"}], children}
+
+      xml = Sassone.encode!(document)
+
+      assert xml ==
+               ~s(<person first_name="John" last_name="Doe"><address street="foo" city="bar"/><gender>male</gender></person>)
+    end
+
+    test "integration with builder" do
+      import Sassone.XML
+
+      items =
+        for index <- 1..2 do
+          element(nil, "item", [], [
+            element(nil, "title", [], ["Item #{index}"]),
+            element(nil, "link", [], ["Link #{index}"]),
+            comment("Comment #{index}"),
+            element(nil, "description", [], [cdata("<a></b>")]),
+            characters("ABCDEFG"),
+            reference(:entity, "copyright")
+          ])
+        end
+
+      xml =
+        element(nil, "rss", [attribute(nil, "version", 2.0)], items)
+        |> Sassone.encode!(version: "1.0")
+
+      expected = """
+      <?xml version="1.0"?>
+      <rss version="2.0">
+      <item>
+      <title>Item 1</title>
+      <link>Link 1</link>
+      <!--Comment 1-->
+      <description><![CDATA[<a></b>]]></description>
+      ABCDEFG
+      &copyright;
+      </item>
+      <item>
+      <title>Item 2</title>
+      <link>Link 2</link>
+      <!--Comment 2-->
+      <description><![CDATA[<a></b>]]></description>
+      ABCDEFG
+      &copyright;
+      </item>
+      </rss>
+      """
+
+      assert xml == String.replace(expected, "\n", "")
+    end
+
+    test "generates deeply nested document" do
+      {document, xml} =
+        Enum.reduce(100..1//-1, {"content", "content"}, fn index, {document, xml} ->
+          {
+            Sassone.XML.element(nil, "level#{index}", [], [document]),
+            "<level#{index}>#{xml}</level#{index}>"
+          }
+        end)
+
+      xml = "<?xml version=\"1.0\"?>" <> xml
+
+      assert Sassone.encode!(document, version: "1.0") == xml
+    end
+
+    test "encodes non expanded entity reference" do
+      document = {nil, "foo", [], [{nil, "event", [], ["test &apos; test"]}]}
+      assert "<foo><event>test &apos; test</event></foo>" == Sassone.encode!(document)
+    end
+  end
 end

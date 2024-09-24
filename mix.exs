@@ -9,8 +9,8 @@ defmodule Sassone.MixProject do
       app: :sassone,
       version: @version,
       elixir: "~> 1.12",
+      elixirc_paths: elixirc_paths(Mix.env()),
       name: "Sassone",
-      consolidate_protocols: Mix.env() != :test,
       deps: deps(),
       package: package(),
       docs: docs()
@@ -19,25 +19,13 @@ defmodule Sassone.MixProject do
 
   def application(), do: []
 
-  defp package() do
-    [
-      description:
-        "Sassone is an XML parser and encoder in Elixir that focuses on speed " <>
-          "and standard compliance.",
-      maintainers: ["Cẩm Huỳnh"],
-      licenses: ["MIT"],
-      links: %{
-        "Changelog" => "https://hexdocs.pm/sassone/changelog.html",
-        "GitHub" => @source_url
-      }
-    ]
-  end
-
   defp deps() do
     [
       {:credo, "~> 1.0", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0", only: :dev, runtime: false},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:nimble_options, "~> 1.0"},
+      {:recase, "~> 0.8"},
       {:stream_data, "~> 1.0", only: [:dev, :test]}
     ]
   end
@@ -53,9 +41,25 @@ defmodule Sassone.MixProject do
       main: "readme",
       source_url: @source_url,
       source_ref: "v#{@version}",
-      assets: "assets",
+      assets: %{"assets" => "assets"},
       formatters: ["html"],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
+    ]
+  end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_env), do: ["lib"]
+
+  defp package() do
+    [
+      description:
+        "Sassone is an XML parser and encoder in Elixir that focuses on speed and standard compliance.",
+      maintainers: ["Luca Corti"],
+      licenses: ["MIT"],
+      links: %{
+        "Changelog" => "https://hexdocs.pm/sassone/changelog.html",
+        "GitHub" => @source_url
+      }
     ]
   end
 end

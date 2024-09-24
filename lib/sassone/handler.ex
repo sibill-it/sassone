@@ -45,11 +45,11 @@ defmodule Sassone.Handler do
         end
 
         def handle_event(:start_element, {namespace, name, attributes}, state) do
-          {:ok, [{:start_element, name, attributes} | state]}
+          {:ok, [{:start_element, namespace, name, attributes} | state]}
         end
 
-        def handle_event(:end_element, name, state) do
-          {:ok, [{:end_element, name} | state]}
+        def handle_event(:end_element, {namespace, name}, state) do
+          {:ok, [{:end_element, namespace, name} | state]}
         end
 
         def handle_event(:characters, chars, state) do
@@ -58,15 +58,6 @@ defmodule Sassone.Handler do
       end
   """
 
-  defmodule Accumulating do
-    @moduledoc false
-
-    @behaviour Sassone.Handler
-
-    @impl Sassone.Handler
-    def handle_event(event, data, state), do: {:ok, [{event, data} | state]}
-  end
-
   alias Sassone.XML
 
   @type t :: module()
@@ -74,8 +65,8 @@ defmodule Sassone.Handler do
   @type cdata :: String.t()
   @type characters :: String.t()
   @type end_document :: state()
-  @type end_element :: {XML.namespace(), XML.element_name()}
-  @type start_element :: {XML.namespace(), XML.element_name(), [XML.attribute()]}
+  @type end_element :: {XML.namespace(), XML.name()}
+  @type start_element :: {XML.namespace(), XML.name(), [XML.attribute()]}
   @type start_document :: Keyword.t()
 
   @type event() ::

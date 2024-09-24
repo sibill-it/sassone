@@ -1,4 +1,4 @@
-defmodule Sassone.Parser.Builder.Guards do
+defmodule Sassone.Parser.Generator.Guards do
   @moduledoc false
 
   defguard is_ascii(codepoint) when codepoint <= 0x7F
