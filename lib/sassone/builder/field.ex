@@ -38,7 +38,7 @@ defmodule Sassone.Builder.Field do
     ],
     fields: [
       doc:
-        "Resource fields to map to XML. The order of elements will be preserved in the generated XML.",
+        "Struct fields to map to XML. The order of elements will be preserved in the generated XML.",
       type: :keyword_list,
       keys: [
         *: [
@@ -88,7 +88,7 @@ defmodule Sassone.Builder.Field do
       default: nil
     ],
     root_element: [
-      doc: "XML root element. This applies only to the toplevel Resource when (de)serializing.",
+      doc: "XML root element. This applies only to the toplevel struct when parsing.",
       type: :string,
       default: "Root"
     ]
