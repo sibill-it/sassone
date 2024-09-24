@@ -9,6 +9,7 @@ defprotocol Sassone.Builder do
   #{Sassone.Builder.Field.__schema__() |> NimbleOptions.new!() |> NimbleOptions.docs()}
   """
 
+  alias Sassone.XML
   alias Sassone.Builder.Field
 
   @typedoc "A strut implementing `Sassone.Builder`"
@@ -23,6 +24,7 @@ defprotocol Sassone.Builder do
   @doc """
   Builds the struct for encoding with `Sassone.encode!/2`
   """
+  @spec build(t) :: XML.element() | nil
   def build(struct)
 
   @doc """

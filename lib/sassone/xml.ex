@@ -36,11 +36,14 @@ defmodule Sassone.XML do
   @compile {
     :inline,
     [
+      attribute: 2,
       attribute: 3,
       cdata: 1,
       characters: 1,
       comment: 1,
+      element: 3,
       element: 4,
+      empty_element: 2,
       empty_element: 3,
       processing_instruction: 2,
       reference: 2
@@ -52,16 +55,16 @@ defmodule Sassone.XML do
 
   @doc "Builds attribute in simple form."
   @spec attribute(namespace(), name(), value()) :: attribute()
-  def attribute(namespace, name, value), do: {namespace, name, Encoder.encode(value)}
+  def attribute(namespace \\ nil, name, value), do: {namespace, name, Encoder.encode(value)}
 
   @doc "Builds empty element in simple form."
   @spec empty_element(namespace(), name(), [attribute()]) :: element()
-  def empty_element(namespace, name, attributes),
+  def empty_element(namespace \\ nil, name, attributes),
     do: {namespace, name, attributes, []}
 
   @doc "Builds element in simple form."
   @spec element(namespace(), name(), [attribute()], [content()]) :: element()
-  def element(namespace, name, attributes, children),
+  def element(namespace \\ nil, name, attributes, children),
     do: {namespace, name, attributes, children}
 
   @doc "Builds characters in simple form."
