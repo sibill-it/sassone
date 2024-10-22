@@ -6,8 +6,8 @@ Sassone
 
 Sassone is an XML SAX parser and encoder in Elixir that focuses on speed, usability and standard compliance.
 
-Sassone was born as a fork of the great [saxy][saxy] library to address some limitations we encountered,
-fix bugs with XML standards compliance and add features we felt where missing for our specific use cases.
+Sassone was born as a fork of the great [saxy][saxy] library to fix bugs, address some limitations
+with XML standards compliance and add some missing features like namespaces and mapping to structs.
 
 Comply with [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w3.org/TR/xml/).
 
@@ -16,8 +16,7 @@ Comply with [Extensible Markup Language (XML) 1.0 (Fifth Edition)](https://www.w
 * An incredibly fast XML 1.0 SAX parser.
 * An extremely fast XML encoder.
 * Native support for streaming parsing large XML files.
-* Parse XML documents into simple DOM format.
-* Support quick returning in event handlers.
+* Support for automatically building and parsing XML with structs.
 
 ## Installation
 
@@ -91,8 +90,8 @@ iex> xml = "<?xml version='1.0' ?><foo bar='value'></foo>"
 iex> Sassone.parse_string(xml, MyEventHandler, [])
 {:ok,
  [{:end_document},
-  {:end_element, "foo"},
-  {:start_element, "foo", [{"bar", "value"}]},
+  {:end_element, {nil, "foo"}},
+  {:start_element, {nil, "foo"}, [{nil, "bar", "value"}]},
   {:start_document, [version: "1.0"]}]}
 ```
 
@@ -178,9 +177,9 @@ iex> struct(struct, map)
 %Person{gender: "female", name: "Alice"}
 ```
 
-In case of deeply nested data, this can prove difficult. In that case, you can use a library
-to handle the conversion to struct. `Ecto` with embedded schemas is great to cast and validate
-data.
+In case of deeply nested data or custom data types, this can prove difficult. In that case, you
+can use a library to handle the conversion to struct. `Ecto` with embedded schemas is great to
+cast and validate data.
 
 For example, assuming you defined `Person` as an embedded `Ecto` schema with a `changeset/2` function:
 
@@ -205,7 +204,7 @@ end
 
 ```elixir
 iex> struct.changeset(struct(schema), map) |> Ecto.Changeset.apply_action(:cast)
-%Person{gender: "female", name: "Alice"}
+{:ok, %Person{gender: "female", name: "Alice"}}
 ```
 
 See `Sassone.Builder` for the full Builder API documentation.
@@ -256,8 +255,7 @@ Some quick and biased conclusions from the benchmark suite:
 * For XML builder and encoding, Sassone is usually 10 to 30 times faster than [XML Builder](https://github.com/joshnuss/xml_builder).
   With deeply nested documents, it could be 180 times faster.
 * Sassone significantly uses less memory than XML Builder (4 times to 25 times).
-* Sassone significantly uses less memory than Xmerl, Erlsom and Exomler (1.4 times
-  10 times).
+* Sassone significantly uses less memory than Xmerl, Erlsom and Exomler (1.4 times to 10 times).
 
 ## Limitations
 

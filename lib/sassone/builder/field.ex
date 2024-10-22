@@ -3,39 +3,42 @@ defmodule Sassone.Builder.Field do
   A struct representing the builder options for a struct field.
   """
 
-  @type type :: :element | :attribute
-
-  @type name :: atom()
-
   @type t :: %__MODULE__{
-          name: name(),
-          parse: boolean(),
-          many: boolean(),
-          struct: module(),
           build: boolean(),
-          type: type(),
+          many: boolean(),
+          name: atom(),
+          namespace: String.t() | nil,
+          parse: boolean(),
+          struct: module(),
+          type: :attribute | :content | :element,
           xml_name: String.t()
         }
 
-  @enforce_keys [:name, :parse, :build, :type, :xml_name]
+  @enforce_keys [:name, :type, :xml_name]
   defstruct build: true,
-            name: nil,
             many: false,
+            name: nil,
+            namespace: nil,
             parse: true,
-            xml_name: nil,
             struct: nil,
-            type: nil
+            type: nil,
+            xml_name: nil
 
   schema = [
-    case: [
-      doc: "Recase the struct field names automatically with the given strategy.",
+    attribute_case: [
+      doc: "Rename the struct fields of type `:attribute` with the given strategy in XML.",
+      type: {:in, [:pascal, :camel, :snake, :kebab]},
+      default: :snake
+    ],
+    debug: [doc: "Enable debug for parser generation.", type: :boolean, default: false],
+    element_case: [
+      doc: "Rename the struct fields of type `:element` with the given strategy in XML.",
       type: {:in, [:pascal, :camel, :snake, :kebab]},
       default: :pascal
     ],
-    debug: [doc: "Enable debug for parser generation.", type: :boolean, default: false],
     fields: [
       doc:
-        "Resource fields to map to XML. The order of elements will be preserved in the generated XML.",
+        "Struct fields to map to XML. The order of elements will be preserved in the generated XML.",
       type: :keyword_list,
       keys: [
         *: [
@@ -60,13 +63,18 @@ defmodule Sassone.Builder.Field do
               doc: "Custom field name for parsing and building. It will be used as-is.",
               type: :string
             ],
+            namespace: [
+              doc: "Namespace to apply to the field. It will be used as-is.",
+              type: {:or, [:string, nil]},
+              default: nil
+            ],
             struct: [
               doc: "A struct deriving `Sibill.Builder` used to parse and build this element.",
               type: :atom
             ],
             type: [
               doc: "How the field is represented in XML: `:element`, `:attribute`, `:content`.",
-              type: {:in, [:element, :attribute]},
+              type: {:in, [:attribute, :content, :element]},
               default: :element
             ]
           ]
@@ -80,7 +88,7 @@ defmodule Sassone.Builder.Field do
       default: nil
     ],
     root_element: [
-      doc: "XML root element. This applies only to the toplevel Resource when (de)serializing.",
+      doc: "XML root element. This applies only to the toplevel struct when parsing.",
       type: :string,
       default: "Root"
     ]
