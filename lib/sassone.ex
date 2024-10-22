@@ -68,7 +68,7 @@ defmodule Sassone do
   to encode the built element into XML binary.
 
       iex> import Sassone.XML
-      iex> element = element(nil, "person", [attribute(nil, "gender", "female")], ["Alice"])
+      iex> element = element("person", [attribute("gender", "female")], ["Alice"])
       {nil, "person", [{nil, "gender", "female"}], ["Alice"]}
       iex> Sassone.encode!(element, [version: "1.0"])
       "<?xml version=\"1.0\"?><person gender=\"female\">Alice</person>"
@@ -357,7 +357,7 @@ defmodule Sassone do
   ## Examples
 
       iex> import Sassone.XML
-      iex> root = element(nil, "foo", [attribute(nil, "foo", "bar")], ["bar"])
+      iex> root = element("foo", [attribute("foo", "bar")], ["bar"])
       iex> prolog = [version: "1.0"]
       iex> Sassone.encode!(root, prolog)
       "<?xml version=\\"1.0\\"?><foo foo=\\"bar\\">bar</foo>"
@@ -380,7 +380,7 @@ defmodule Sassone do
   ## Examples
 
       iex> import Sassone.XML
-      iex> root = element(nil, "foo", [attribute(nil, "foo", "bar")], ["bar"])
+      iex> root = element("foo", [attribute("foo", "bar")], ["bar"])
       iex> prolog = [version: "1.0"]
       iex> Sassone.encode_to_iodata!(root, prolog)
       [

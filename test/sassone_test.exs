@@ -167,7 +167,7 @@ defmodule SassoneTest do
     import Sassone.XML
 
     test "encodes XML document into string" do
-      root = element(nil, "foo", [], ["foo"])
+      root = element("foo", [], ["foo"])
       assert Sassone.encode!(root, version: "1.0") == ~s(<?xml version="1.0"?><foo>foo</foo>)
     end
   end
@@ -176,7 +176,7 @@ defmodule SassoneTest do
     import Sassone.XML
 
     test "encodes XML document into IO data" do
-      root = element(nil, "foo", [], ["foo"])
+      root = element("foo", [], ["foo"])
       assert xml = Sassone.encode_to_iodata!(root, version: "1.0")
       assert is_list(xml)
       assert IO.iodata_to_binary(xml) == ~s(<?xml version="1.0"?><foo>foo</foo>)
@@ -385,18 +385,18 @@ defmodule SassoneTest do
 
       items =
         for index <- 1..2 do
-          element(nil, "item", [], [
-            element(nil, "title", [], ["Item #{index}"]),
-            element(nil, "link", [], ["Link #{index}"]),
+          element("item", [], [
+            element("title", [], ["Item #{index}"]),
+            element("link", [], ["Link #{index}"]),
             comment("Comment #{index}"),
-            element(nil, "description", [], [cdata("<a></b>")]),
+            element("description", [], [cdata("<a></b>")]),
             characters("ABCDEFG"),
             reference(:entity, "copyright")
           ])
         end
 
       xml =
-        element(nil, "rss", [attribute(nil, "version", 2.0)], items)
+        element("rss", [attribute("version", 2.0)], items)
         |> Sassone.encode!(version: "1.0")
 
       expected = """
@@ -428,7 +428,7 @@ defmodule SassoneTest do
       {document, xml} =
         Enum.reduce(100..1//-1, {"content", "content"}, fn index, {document, xml} ->
           {
-            Sassone.XML.element(nil, "level#{index}", [], [document]),
+            Sassone.XML.element("level#{index}", [], [document]),
             "<level#{index}>#{xml}</level#{index}>"
           }
         end)
