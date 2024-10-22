@@ -36,11 +36,14 @@ defmodule Sassone.XML do
   @compile {
     :inline,
     [
+      attribute: 2,
       attribute: 3,
       cdata: 1,
       characters: 1,
       comment: 1,
+      element: 3,
       element: 4,
+      empty_element: 2,
       empty_element: 3,
       processing_instruction: 2,
       reference: 2
@@ -52,16 +55,16 @@ defmodule Sassone.XML do
 
   @doc "Builds attribute in simple form."
   @spec attribute(namespace(), name(), value()) :: attribute()
-  def attribute(namespace, name, value), do: {namespace, name, Encoder.encode(value)}
+  def attribute(namespace \\ nil, name, value), do: {namespace, name, Encoder.encode(value)}
 
   @doc "Builds empty element in simple form."
   @spec empty_element(namespace(), name(), [attribute()]) :: element()
-  def empty_element(namespace, name, attributes),
+  def empty_element(namespace \\ nil, name, attributes),
     do: {namespace, name, attributes, []}
 
   @doc "Builds element in simple form."
   @spec element(namespace(), name(), [attribute()], [content()]) :: element()
-  def element(namespace, name, attributes, children),
+  def element(namespace \\ nil, name, attributes, children),
     do: {namespace, name, attributes, children}
 
   @doc "Builds characters in simple form."
@@ -116,7 +119,7 @@ defmodule Sassone.XML do
   defp build_attribute(_field, nil, attributes), do: attributes
 
   defp build_attribute(field, value, attributes),
-    do: [attribute(nil, field.xml_name, value) | attributes]
+    do: [attribute(field.xml_name, value) | attributes]
 
   defp build_elements(_struct, %Field{build: false}, elements),
     do: elements
@@ -136,7 +139,7 @@ defmodule Sassone.XML do
     if Builder.impl_for(value) do
       [build(value, field.xml_name) | elements]
     else
-      [element(nil, field.xml_name, [], [characters(value)]) | elements]
+      [element(field.xml_name, [], [characters(value)]) | elements]
     end
   end
 end

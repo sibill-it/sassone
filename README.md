@@ -133,7 +133,7 @@ to encode the built element into XML binary.
 
 ```elixir
 iex> import Sassone.XML
-iex> element = element(nil, "person", [gender: "female"], [characters("Alice")])
+iex> element = element("person", [gender: "female"], [characters("Alice")])
 {nil, "person", [{"gender", "female"}], [{:characters, "Alice"}]}
 iex> Sassone.encode!(element, [])
 "<?xml version=\"1.0\" encoding=\"utf-8\"?><person gender=\"female\">Alice</person>"
