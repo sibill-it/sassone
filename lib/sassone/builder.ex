@@ -113,7 +113,7 @@ defimpl Sassone.Builder, for: Any do
     fields =
       Enum.map(options[:fields], fn {name, field_options} ->
         case =
-          if options[:type] == :attribute do
+          if field_options[:type] == :attribute do
             options[:attribute_case]
           else
             options[:element_case]
