@@ -94,7 +94,7 @@ defmodule Sassone.XML do
   def processing_instruction(name, instruction),
     do: {:processing_instruction, name, Encoder.encode(instruction)}
 
-  @doc "Builds a struct for encoding with `Sassone.encode!/2`"
+  @doc "Builds a struct deriving `Sassone.Builder` for encoding with `Sassone.encode!/2`"
   @spec build(Builder.t(), name()) :: element()
   def build(struct, element_name) do
     attributes =
@@ -118,8 +118,8 @@ defmodule Sassone.XML do
 
   defp build_attribute(_field, nil, attributes), do: attributes
 
-  defp build_attribute(field, value, attributes),
-    do: [attribute(field.xml_name, value) | attributes]
+  defp build_attribute(%Field{} = field, value, attributes),
+    do: [attribute(field.namespace, field.xml_name, value) | attributes]
 
   defp build_elements(_struct, %Field{build: false}, elements),
     do: elements
@@ -131,15 +131,16 @@ defmodule Sassone.XML do
     do: elements
 
   defp build_element(%Field{} = field, values, elements)
-       when is_list(values) do
-    Enum.reduce(values, elements, &build_element(field, &1, &2))
-  end
+       when is_list(values),
+       do: Enum.reduce(values, elements, &build_element(field, &1, &2))
+
+  defp build_element(%Field{type: :content}, value, elements), do: [characters(value) | elements]
 
   defp build_element(%Field{} = field, value, elements) do
     if Builder.impl_for(value) do
       [build(value, field.xml_name) | elements]
     else
-      [element(field.xml_name, [], [characters(value)]) | elements]
+      [element(field.namespace, field.xml_name, [], [characters(value)]) | elements]
     end
   end
 end

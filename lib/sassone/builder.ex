@@ -1,14 +1,46 @@
 defprotocol Sassone.Builder do
   @moduledoc """
-  Protocol to implement XML serialization and deserialization for a struct.
+  Protocol to implement XML building and parsing for structs.
 
-  You can derive or implement this protocol for your structs
-
+  You can derive or implement this protocol for your structs.
   When deriving the protocol, these are the supported options:
 
   #{Sassone.Builder.Field.__schema__() |> NimbleOptions.new!() |> NimbleOptions.docs()}
+
+  The builder allows nesting of other structs implementing `Sassone.Builder`
+  via the `struct` field option.
+
+  The generated parser returns a map with atom keys you can pass to  `struct/2`
+  or `struct!/2` to obtain a struct.
+
+  > #### Data validation {: .neutral}
+  >
+  > Transforming a map with nested structs and/or values into data
+  > types other than strings, such as dates, datetimes, etc. might
+  > prove complex and error prone and is out of scope for `Sassone`.
+  >
+  > In this case, using a library to define your struct, validate and
+  > transform your data, both before building and after parsing, is
+  > probably a good idea.
+  >
+  > `Ecto` with [embedded schemas](https://hexdocs.pm/ecto/embedded-schemas.html)
+  > is a great way to do this, and naturally fits the `Sassone.Builder` model.
+
+  > #### XML elements order {: .warning}
+  >
+  > In XML documents, the order in which elements appear is meaningful.
+  >
+  > The builder protocol preserves field ordering, so if you need fields to be
+  > mapped to elments appearing in a a specific order in XML when building with
+  > `Sassone.XML.build/2`, be sure to list them in that spefic order in the `fields`
+  > option.
+  >
+  > Also note that ordering is not enforced by the parser, so parsing is not strict
+  > in that sense and the generated parser will parse elements refardless of the order
+  > in which they appear in the XML document.
   """
 
+  alias Sassone.XML
   alias Sassone.Builder.Field
 
   @typedoc "A strut implementing `Sassone.Builder`"
@@ -23,6 +55,7 @@ defprotocol Sassone.Builder do
   @doc """
   Builds the struct for encoding with `Sassone.encode!/2`
   """
+  @spec build(t) :: XML.element() | nil
   def build(struct)
 
   @doc """
@@ -79,14 +112,19 @@ defimpl Sassone.Builder, for: Any do
 
     fields =
       Enum.map(options[:fields], fn {name, field_options} ->
-        xml_name = field_options[:name] || recase(to_string(name), options[:case])
+        case =
+          if options[:type] == :attribute do
+            options[:attribute_case]
+          else
+            options[:element_case]
+          end
+
+        xml_name = field_options[:name] || recase(to_string(name), case)
         %Field{struct(Field, field_options) | xml_name: xml_name, name: name}
       end)
 
-    {elements, attributes} =
-      Enum.split_with(fields, fn %Field{} = field ->
-        field.type == :element
-      end)
+    {attributes, elements} =
+      Enum.split_with(fields, fn %Field{} = field -> field.type == :attribute end)
 
     start_document = generate_start_document(module)
     end_document = generate_end_document()
