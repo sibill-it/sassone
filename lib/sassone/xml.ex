@@ -131,13 +131,10 @@ defmodule Sassone.XML do
     do: elements
 
   defp build_element(%Field{} = field, values, elements)
-       when is_list(values) do
-    Enum.reduce(values, elements, &build_element(field, &1, &2))
-  end
+       when is_list(values),
+       do: Enum.reduce(values, elements, &build_element(field, &1, &2))
 
-  defp build_element(%Field{type: :content}, value, elements) do
-    [characters(value) | elements]
-  end
+  defp build_element(%Field{type: :content}, value, elements), do: [characters(value) | elements]
 
   defp build_element(%Field{} = field, value, elements) do
     if Builder.impl_for(value) do
