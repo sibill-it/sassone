@@ -153,7 +153,7 @@ defimpl Sassone.Builder, for: Any do
         unquote(end_element)
 
         def attributes(_t), do: unquote(Macro.escape(attributes))
-        def build(t), do: XML.build(t, Builder.root_element(t))
+        def build(t), do: XML.build(t, Builder.namespace(t), Builder.root_element(t))
         def elements(_t), do: unquote(Macro.escape(elements))
         def handler(_t), do: __MODULE__
         def namespace(_t), do: unquote(options[:namespace])
