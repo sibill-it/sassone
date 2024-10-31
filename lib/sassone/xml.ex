@@ -138,7 +138,7 @@ defmodule Sassone.XML do
 
   defp build_element(%Field{} = field, value, elements) do
     if Builder.impl_for(value) do
-      [build(value, field.xml_name) | elements]
+      [build(value, field.namespace, field.xml_name) | elements]
     else
       [element(field.namespace, field.xml_name, [], [characters(value)]) | elements]
     end
