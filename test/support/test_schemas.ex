@@ -17,4 +17,51 @@ defmodule Sassone.TestSchemas do
     }
     defstruct [:bio, :gender, :name, :surname]
   end
+
+  defmodule Product do
+    @moduledoc false
+
+    @derive {
+      Sassone.Builder,
+      element_case: :snake,
+      root_element: "product",
+      fields: [
+        uuid: [type: :attribute],
+        name: [type: :element]
+      ]
+    }
+    defstruct [:uuid, :name]
+  end
+
+  defmodule Line do
+    @moduledoc false
+
+    @derive {
+      Sassone.Builder,
+      element_case: :snake,
+      fields: [
+        product: [type: :element, struct: Product],
+        quantity: [type: :element],
+        sorting: [type: :attribute]
+      ]
+    }
+    defstruct [:product, :quantity, :sorting]
+  end
+
+  defmodule Order do
+    @moduledoc false
+
+    @derive {
+      Sassone.Builder,
+      element_case: :snake,
+      root_element: "order",
+      fields: [
+        id: [type: :attribute],
+        line: [many: true, struct: Line],
+        status: [type: :element],
+        ref: [type: :element]
+      ]
+    }
+    defstruct [:id, :line, :status, :ref]
+  end
 end
