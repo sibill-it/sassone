@@ -83,24 +83,6 @@ defprotocol Sassone.Builder do
   def root_element(t)
 end
 
-defmodule Sassone.Utils do
-  alias Sassone.Builder
-
-  def parse_attributes(handler, parser, element_attributes) do
-    attrs = handler.attributes(nil)
-
-    Enum.reduce(element_attributes, [], fn {_, xml_name, value}, acc ->
-      case Enum.find(attrs, fn %_{xml_name: xml} -> xml == xml_name end) do
-        %_{name: name} ->
-          [{[name | parser.keys], String.trim(value)} | acc]
-
-        _ ->
-          acc
-      end
-    end)
-  end
-end
-
 defimpl Sassone.Builder, for: Any do
   alias Sassone.Builder
   alias Sassone.Builder.Field
@@ -219,7 +201,7 @@ defimpl Sassone.Builder, for: Any do
     end
   end
 
-  def generate_start_element(elements) do
+  defp generate_start_element(elements) do
     Enum.filter(elements, fn %Field{} = field -> field.parse end)
     |> Enum.reduce(
       [
@@ -227,12 +209,17 @@ defimpl Sassone.Builder, for: Any do
           @impl Sassone.Handler
           def handle_event(:start_element, {_, _, element_attributes}, %Parser{} = parser) do
             handler = Builder.handler(struct(parser.struct))
+            attrs = handler.attributes(nil)
 
             new_state =
-              handler
-              |> Sassone.Utils.parse_attributes(parser, element_attributes)
-              |> Enum.reduce(parser.state, fn {keys, value}, state ->
-                put_in(state, Enum.reverse(keys), String.trim(value))
+              Enum.reduce(element_attributes, parser.state, fn {_, xml_name, value}, acc ->
+                case Enum.find(attrs, fn %_{xml_name: xml} -> xml == xml_name end) do
+                  %_{name: name} ->
+                    put_in(acc, Enum.reverse([name | parser.keys]), String.trim(value))
+
+                  _ ->
+                    acc
+                end
               end)
 
             parser = %Parser{parser | state: new_state}
@@ -248,7 +235,7 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(field.xml_name) = element, attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, _element_attributes} = data,
                     %Parser{} = parser
                   ) do
                 elements = [unquote(field.xml_name) | parser.elements]
@@ -284,11 +271,17 @@ defimpl Sassone.Builder, for: Any do
                     state: state
                 }
 
+                attrs = next_parser.attributes(nil)
+
                 new_state =
-                  next_parser
-                  |> Sassone.Utils.parse_attributes(parser, element_attributes)
-                  |> Enum.reduce(parser.state, fn {keys, value}, state ->
-                    put_in(state, Enum.reverse(keys), String.trim(value))
+                  Enum.reduce(element_attributes, parser.state, fn {_, xml_name, value}, acc ->
+                    case Enum.find(attrs, fn %_{xml_name: xml} -> xml == xml_name end) do
+                      %_{name: name} ->
+                        put_in(acc, Enum.reverse([name | parser.keys]), String.trim(value))
+
+                      _ ->
+                        acc
+                    end
                   end)
 
                 parser = %Parser{parser | state: new_state}
@@ -327,11 +320,17 @@ defimpl Sassone.Builder, for: Any do
                     state: state
                 }
 
+                attrs = next_parser.attributes(nil)
+
                 new_state =
-                  next_parser
-                  |> Sassone.Utils.parse_attributes(parser, element_attributes)
-                  |> Enum.reduce(parser.state, fn {keys, value}, state ->
-                    put_in(state, Enum.reverse(keys), String.trim(value))
+                  Enum.reduce(element_attributes, parser.state, fn {_, xml_name, value}, acc ->
+                    case Enum.find(attrs, fn %_{xml_name: xml} -> xml == xml_name end) do
+                      %_{name: name} ->
+                        put_in(acc, Enum.reverse([name | parser.keys]), String.trim(value))
+
+                      _ ->
+                        acc
+                    end
                   end)
 
                 parser = %Parser{parser | state: new_state}
