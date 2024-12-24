@@ -207,7 +207,25 @@ defimpl Sassone.Builder, for: Any do
       [
         quote do
           @impl Sassone.Handler
-          def handle_event(:start_element, _data, state), do: {:ok, state}
+          def handle_event(:start_element, {_, _, element_attributes}, %Parser{} = parser) do
+            handler = Builder.handler(struct(parser.struct))
+            attrs = handler.attributes(nil)
+
+            new_state =
+              Enum.reduce(element_attributes, parser.state, fn {_, xml_name, value}, acc ->
+                case Enum.find(attrs, fn %_{xml_name: xml} -> xml == xml_name end) do
+                  %_{name: name} ->
+                    put_in(acc, Enum.reverse([name | parser.keys]), String.trim(value))
+
+                  _ ->
+                    acc
+                end
+              end)
+
+            parser = %Parser{parser | state: new_state}
+
+            {:ok, parser}
+          end
         end
       ],
       fn
@@ -217,7 +235,7 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, _element_attributes} = data,
                     %Parser{} = parser
                   ) do
                 elements = [unquote(field.xml_name) | parser.elements]
@@ -236,7 +254,7 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, element_attributes} = data,
                     %Parser{} = parser
                   ) do
                 elements = [unquote(field.xml_name) | parser.elements]
@@ -253,6 +271,21 @@ defimpl Sassone.Builder, for: Any do
                     state: state
                 }
 
+                attrs = next_parser.attributes(nil)
+
+                new_state =
+                  Enum.reduce(element_attributes, parser.state, fn {_, xml_name, value}, acc ->
+                    case Enum.find(attrs, fn %_{xml_name: xml} -> xml == xml_name end) do
+                      %_{name: name} ->
+                        put_in(acc, Enum.reverse([name | parser.keys]), String.trim(value))
+
+                      _ ->
+                        acc
+                    end
+                  end)
+
+                parser = %Parser{parser | state: new_state}
+
                 {:cont, next_parser, parser}
               end
             end
@@ -265,7 +298,7 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, element_attributes} = data,
                     %Parser{} = parser
                   ) do
                 elements = [unquote(field.xml_name) | parser.elements]
@@ -286,6 +319,21 @@ defimpl Sassone.Builder, for: Any do
                     parsers: parsers,
                     state: state
                 }
+
+                attrs = next_parser.attributes(nil)
+
+                new_state =
+                  Enum.reduce(element_attributes, parser.state, fn {_, xml_name, value}, acc ->
+                    case Enum.find(attrs, fn %_{xml_name: xml} -> xml == xml_name end) do
+                      %_{name: name} ->
+                        put_in(acc, Enum.reverse([name | parser.keys]), String.trim(value))
+
+                      _ ->
+                        acc
+                    end
+                  end)
+
+                parser = %Parser{parser | state: new_state}
 
                 {:cont, next_parser, parser}
               end
