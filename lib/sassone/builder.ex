@@ -72,7 +72,7 @@ defprotocol Sassone.Builder do
   @doc """
   Returns the XML root element name for the struct.
   """
-  @spec root_element(t()) :: String.t()
+  @spec root_element(t()) :: String.t() | nil
   def root_element(t)
 end
 
@@ -119,7 +119,7 @@ defimpl Sassone.Builder, for: Any do
 
     start_document = generate_start_document(module)
     end_document = generate_end_document()
-    start_element = generate_start_element(elements)
+    start_element = generate_start_element(elements, options[:root_element])
     characters = generate_characters(elements)
     end_element = generate_end_element(elements)
 
@@ -157,21 +157,7 @@ defimpl Sassone.Builder, for: Any do
   def elements(_t), do: []
   def handler(_t), do: nil
   def namespace(_t), do: nil
-  def root_element(_t), do: "Root"
-
-  @doc false
-  def parse_attributes(struct, attributes) do
-    Builder.attributes(struct)
-    |> Enum.reduce(%{}, fn %Field{} = field, state ->
-      Enum.find_value(attributes, state, fn
-        {_ns, attribute, value} when attribute == field.xml_name ->
-          Map.put(state, field.name, value)
-
-        {_ns, _attribute, _value} ->
-          nil
-      end)
-    end)
-  end
+  def root_element(_t), do: nil
 
   defp maybe_debug(true = _debug, code) do
     for funcs <- code, do: funcs |> Macro.to_string() |> IO.puts()
@@ -212,29 +198,32 @@ defimpl Sassone.Builder, for: Any do
     end
   end
 
-  defp generate_start_element(elements) do
+  defp generate_start_element(elements, root_element) do
     Enum.filter(elements, fn %Field{} = field -> field.parse end)
     |> Enum.reduce(
       [
-        quote do
-          @impl Sassone.Handler
-          def handle_event(
-                :start_element,
-                {_ns, _element, attributes},
-                %Parser{handlers: [_root]} = parser
-              ) do
-            {
-              :ok,
-              %Parser{
-                parser
-                | state: Builder.Any.parse_attributes(struct(parser.struct), attributes)
+        if root_element do
+          quote do
+            @impl Sassone.Handler
+            def handle_event(
+                  :start_element,
+                  {_ns, unquote(root_element), attributes},
+                  %Parser{} = parser
+                ) do
+              {
+                :ok,
+                %Parser{
+                  parser
+                  | state: Parser.parse_attributes(struct(parser.struct), attributes)
+                }
               }
-            }
+            end
           end
-        end,
-        quote do
-          @impl Sassone.Handler
-          def handle_event(:start_element, _data, state), do: {:ok, state}
+        else
+          quote do
+            @impl Sassone.Handler
+            def handle_event(:start_element, _data, state), do: {:ok, state}
+          end
         end
       ],
       fn
@@ -251,7 +240,8 @@ defimpl Sassone.Builder, for: Any do
                   :ok,
                   %Parser{
                     parser
-                    | elements: [unquote(field.xml_name) | parser.elements],
+                    | depth: parser.depth + 1,
+                      elements: [unquote(field.xml_name) | parser.elements],
                       keys: [unquote(field.name) | parser.keys]
                   }
                 }
@@ -274,14 +264,15 @@ defimpl Sassone.Builder, for: Any do
                   unquote(Builder.handler(struct(field.struct))),
                   %Parser{
                     parser
-                    | elements: [unquote(field.xml_name) | parser.elements],
+                    | depth: 0,
+                      elements: [unquote(field.xml_name) | parser.elements],
                       keys: [unquote(field.name) | parser.keys],
                       handlers: [unquote(Builder.handler(struct(field.struct))) | parser.handlers],
                       state:
                         put_in(
                           parser.state,
                           Enum.reverse([unquote(field.name) | parser.keys]),
-                          Builder.Any.parse_attributes(struct(unquote(field.struct)), attributes)
+                          Parser.parse_attributes(struct(unquote(field.struct)), attributes)
                         )
                   }
                 }
@@ -300,14 +291,15 @@ defimpl Sassone.Builder, for: Any do
                     %Parser{} = parser
                   ) do
                 attributes =
-                  Builder.Any.parse_attributes(struct(unquote(field.struct)), attributes)
+                  Parser.parse_attributes(struct(unquote(field.struct)), attributes)
 
                 {
                   :cont,
                   unquote(Builder.handler(struct(field.struct))),
                   %Parser{
                     parser
-                    | elements: [:__LAST__, unquote(field.xml_name) | parser.elements],
+                    | depth: 0,
+                      elements: [:__LAST__, unquote(field.xml_name) | parser.elements],
                       keys: [Access.at(-1), unquote(field.name) | parser.keys],
                       handlers: [unquote(Builder.handler(struct(field.struct))) | parser.handlers],
                       state:
@@ -342,6 +334,35 @@ defimpl Sassone.Builder, for: Any do
         end
       ],
       fn
+        %Field{struct: nil, type: :content} = field, functions ->
+          [
+            quote do
+              @impl Sassone.Handler
+              def handle_event(
+                    :characters,
+                    data,
+                    %Parser{depth: 0} = parser
+                  ) do
+                {
+                  :ok,
+                  %Parser{
+                    parser
+                    | state:
+                        update_in(
+                          parser.state,
+                          Enum.reverse([unquote(field.name) | parser.keys]),
+                          fn
+                            nil -> String.trim(data)
+                            value -> value <> String.trim(data)
+                          end
+                        )
+                  }
+                }
+              end
+            end
+            | functions
+          ]
+
         %Field{struct: nil, many: false} = field, functions ->
           [
             quote do
@@ -361,7 +382,7 @@ defimpl Sassone.Builder, for: Any do
                     | state:
                         update_in(parser.state, Enum.reverse(parser.keys), fn
                           nil -> String.trim(data)
-                          values -> values <> String.trim(data)
+                          value -> value <> String.trim(data)
                         end)
                   }
                 }
@@ -424,7 +445,8 @@ defimpl Sassone.Builder, for: Any do
               previous_handler,
               %Parser{
                 parser
-                | keys: keys,
+                | depth: 0,
+                  keys: keys,
                   elements: elements,
                   handlers: [previous_handler | handlers]
               }
@@ -447,7 +469,8 @@ defimpl Sassone.Builder, for: Any do
               previous_handler,
               %Parser{
                 parser
-                | keys: keys,
+                | depth: 0,
+                  keys: keys,
                   elements: elements,
                   handlers: [previous_handler | handlers]
               }
@@ -469,7 +492,7 @@ defimpl Sassone.Builder, for: Any do
                     {_ns, unquote(field.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
-                {:ok, %Parser{parser | keys: keys, elements: elements}}
+                {:ok, %Parser{parser | depth: parser.depth - 1, keys: keys, elements: elements}}
               end
             end
             | functions
@@ -484,7 +507,7 @@ defimpl Sassone.Builder, for: Any do
                     {_ns, unquote(field.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
-                {:ok, %Parser{parser | keys: keys, elements: elements}}
+                {:ok, %Parser{parser | depth: parser.depth - 1, keys: keys, elements: elements}}
               end
             end
             | functions

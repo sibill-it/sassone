@@ -4,34 +4,20 @@ defmodule Sassone.XML do
   """
 
   @type character_type :: :entity | :hexadecimal | :decimal
-
   @type characters :: {:characters, String.t()}
-
   @type cdata :: {:cdata, String.t()}
-
   @type comment :: {:comment, String.t()}
-
   @type entity_ref :: {:reference, {:entity, String.t()}}
-
   @type hex_ref :: {:reference, {:hexadecimal, integer()}}
-
   @type dec_ref :: {:reference, {:decimal, integer()}}
-
   @type ref :: entity_ref() | hex_ref() | dec_ref()
-
   @type content :: element() | characters() | cdata() | ref() | comment() | String.t()
-
   @type namespace :: String.t() | nil
-
   @type name :: String.t()
-
-  @type value :: term()
-
-  @type attribute :: {namespace(), name(), value()}
-
-  @type element :: {namespace(), name(), [attribute()], [content()]}
-
   @type processing_instruction :: {:processing_instruction, name(), instruction :: String.t()}
+  @type value :: term()
+  @type attribute :: {namespace(), name(), value()}
+  @type element :: {namespace(), name(), [attribute()], [content()]}
 
   @compile {
     :inline,
@@ -96,7 +82,8 @@ defmodule Sassone.XML do
 
   @doc "Builds a struct deriving `Sassone.Builder` for encoding with `Sassone.encode!/2`"
   @spec build(Builder.t(), namespace() | nil, name()) :: element()
-  def build(struct), do: build(struct, Builder.namespace(struct), Builder.root_element(struct))
+  def build(struct),
+    do: build(struct, Builder.namespace(struct), Builder.root_element(struct) || "Root")
 
   defp build(struct, namespace, element_name) do
     attributes =

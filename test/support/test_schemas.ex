@@ -27,10 +27,11 @@ defmodule Sassone.TestSchemas do
       root_element: "product",
       fields: [
         uuid: [type: :attribute],
-        name: [type: :element]
+        name: [type: :element],
+        description: [type: :content]
       ]
     }
-    defstruct [:uuid, :name]
+    defstruct [:uuid, :name, :description]
   end
 
   defmodule Line do
@@ -53,6 +54,7 @@ defmodule Sassone.TestSchemas do
 
     @derive {
       Sassone.Builder,
+      debug: true,
       element_case: :snake,
       root_element: "order",
       fields: [

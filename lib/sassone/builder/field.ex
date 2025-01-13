@@ -89,8 +89,7 @@ defmodule Sassone.Builder.Field do
     ],
     root_element: [
       doc: "XML root element. This applies only to the toplevel struct when parsing.",
-      type: :string,
-      default: "Root"
+      type: :string
     ]
   ]
 
