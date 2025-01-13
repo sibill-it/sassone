@@ -96,7 +96,9 @@ defmodule Sassone.XML do
 
   @doc "Builds a struct deriving `Sassone.Builder` for encoding with `Sassone.encode!/2`"
   @spec build(Builder.t(), namespace() | nil, name()) :: element()
-  def build(struct, namespace \\ nil, element_name) do
+  def build(struct), do: build(struct, Builder.namespace(struct), Builder.root_element(struct))
+
+  defp build(struct, namespace, element_name) do
     attributes =
       Builder.attributes(struct)
       |> Enum.reduce([], &build_attributes(struct, &1, &2))

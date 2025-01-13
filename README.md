@@ -159,7 +159,7 @@ end
 To generate an XML document for your struct by calling:
 
 ```elixir
-iex> Sassone.Builder.build(%Person{gender: "female", name: "Alice"}) |> Sassone.encode!()
+iex> Sassone.XML.build(%Person{gender: "female", name: "Alice"}) |> Sassone.encode!()
 "<?xml version=\"1.0\" encoding=\"utf-8\"?><person gender=\"female\">Alice</person>"
 ```
 

@@ -40,7 +40,6 @@ defprotocol Sassone.Builder do
   > in which they appear in the XML document.
   """
 
-  alias Sassone.XML
   alias Sassone.Builder.Field
 
   @typedoc "A strut implementing `Sassone.Builder`"
@@ -51,12 +50,6 @@ defprotocol Sassone.Builder do
   """
   @spec attributes(t()) :: [Field.t()]
   def attributes(struct)
-
-  @doc """
-  Builds the struct for encoding with `Sassone.encode!/2`
-  """
-  @spec build(t) :: XML.element() | nil
-  def build(struct)
 
   @doc """
   Returns the mapping of elements for the struct.
@@ -105,9 +98,7 @@ defimpl Sassone.Builder, for: Any do
     names = options[:fields] |> Keyword.keys() |> MapSet.new()
 
     if not MapSet.subset?(names, struct_members) do
-      difference = MapSet.difference(names, struct_members)
-
-      raise "Mismatching fields in the declaration. Missing fields: #{inspect(MapSet.to_list(difference))}"
+      raise "Mismatching fields in the declaration. Missing fields: #{inspect(MapSet.difference(names, struct_members) |> MapSet.to_list())}"
     end
 
     fields =
@@ -132,12 +123,13 @@ defimpl Sassone.Builder, for: Any do
     characters = generate_characters(elements)
     end_element = generate_end_element(elements)
 
-    if options[:debug] do
-      end_document |> Macro.to_string() |> IO.puts()
-      start_element |> Macro.to_string() |> IO.puts()
-      characters |> Macro.to_string() |> IO.puts()
-      end_element |> Macro.to_string() |> IO.puts()
-    end
+    maybe_debug(options[:debug], [
+      start_document,
+      end_document,
+      start_element,
+      characters,
+      end_element
+    ])
 
     quote do
       defimpl Sassone.Builder, for: unquote(module) do
@@ -153,7 +145,6 @@ defimpl Sassone.Builder, for: Any do
         unquote(end_element)
 
         def attributes(_t), do: unquote(Macro.escape(attributes))
-        def build(t), do: XML.build(t, Builder.namespace(t), Builder.root_element(t))
         def elements(_t), do: unquote(Macro.escape(elements))
         def handler(_t), do: __MODULE__
         def namespace(_t), do: unquote(options[:namespace])
@@ -163,11 +154,29 @@ defimpl Sassone.Builder, for: Any do
   end
 
   def attributes(_t), do: []
-  def build(_t), do: nil
   def elements(_t), do: []
   def handler(_t), do: nil
   def namespace(_t), do: nil
   def root_element(_t), do: "Root"
+
+  @doc false
+  def parse_attributes(struct, attributes) do
+    Enum.reduce(attributes, %{}, fn {_ns, attribute, value}, state ->
+      Enum.find_value(Builder.attributes(struct), state, fn
+        %Field{xml_name: ^attribute} = field ->
+          Map.put(state, field.name, value)
+
+        %Field{} ->
+          nil
+      end)
+    end)
+  end
+
+  defp maybe_debug(true = _debug, code) do
+    for funcs <- code, do: funcs |> Macro.to_string() |> IO.puts()
+  end
+
+  defp maybe_debug(_debug, _funcs), do: :ok
 
   defp normalize_default_options(options) do
     {_, options} =
@@ -187,8 +196,9 @@ defimpl Sassone.Builder, for: Any do
   defp generate_start_document(module) do
     quote do
       @impl Sassone.Handler
-      def handle_event(:start_document, _data, _state),
-        do: {:ok, %Parser{struct: unquote(module), parsers: [__MODULE__]}}
+      def handle_event(:start_document, _data, _parser) do
+        {:ok, %Parser{struct: unquote(module), handlers: [__MODULE__]}}
+      end
     end
   end
 
@@ -207,6 +217,22 @@ defimpl Sassone.Builder, for: Any do
       [
         quote do
           @impl Sassone.Handler
+          def handle_event(
+                :start_element,
+                {_ns, _element, attributes},
+                %Parser{handlers: [_root]} = parser
+              ) do
+            {
+              :ok,
+              %Parser{
+                parser
+                | state: Builder.Any.parse_attributes(struct(parser.struct), attributes)
+              }
+            }
+          end
+        end,
+        quote do
+          @impl Sassone.Handler
           def handle_event(:start_element, _data, state), do: {:ok, state}
         end
       ],
@@ -220,11 +246,14 @@ defimpl Sassone.Builder, for: Any do
                     {_ns, unquote(field.xml_name) = element, _attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(field.xml_name) | parser.elements]
-                keys = [unquote(field.name) | parser.keys]
-                parser = %Parser{parser | elements: elements, keys: keys}
-
-                {:ok, parser}
+                {
+                  :ok,
+                  %Parser{
+                    parser
+                    | elements: [unquote(field.xml_name) | parser.elements],
+                      keys: [unquote(field.name) | parser.keys]
+                  }
+                }
               end
             end
             | functions
@@ -236,24 +265,25 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(field.xml_name) | parser.elements]
-                keys = [unquote(field.name) | parser.keys]
-                next_parser = unquote(Builder.handler(struct(field.struct)))
-                parsers = [next_parser | parser.parsers]
-                state = put_in(parser.state, Enum.reverse(keys), %{})
-
-                parser = %Parser{
-                  parser
-                  | elements: elements,
-                    keys: keys,
-                    parsers: parsers,
-                    state: state
+                {
+                  :cont,
+                  unquote(Builder.handler(struct(field.struct))),
+                  %Parser{
+                    parser
+                    | elements: [unquote(field.xml_name) | parser.elements],
+                      keys: [unquote(field.name) | parser.keys],
+                      handlers: [unquote(Builder.handler(struct(field.struct))) | parser.handlers],
+                      state:
+                        put_in(
+                          parser.state,
+                          Enum.reverse([unquote(field.name) | parser.keys]),
+                          Builder.Any.parse_attributes(struct(unquote(field.struct)), attributes)
+                        )
+                  }
                 }
-
-                {:cont, next_parser, parser}
               end
             end
             | functions
@@ -265,29 +295,31 @@ defimpl Sassone.Builder, for: Any do
               @impl Sassone.Handler
               def handle_event(
                     :start_element,
-                    {_ns, unquote(field.xml_name) = element, _attributes} = data,
+                    {_ns, unquote(field.xml_name) = element, attributes} = data,
                     %Parser{} = parser
                   ) do
-                elements = [unquote(field.xml_name) | parser.elements]
-                keys = [unquote(field.name) | parser.keys]
-                next_parser = unquote(Builder.handler(struct(field.struct)))
-                parsers = [next_parser | parser.parsers]
+                attributes =
+                  Builder.Any.parse_attributes(struct(unquote(field.struct)), attributes)
 
-                state =
-                  update_in(parser.state, Enum.reverse(keys), fn
-                    nil -> [%{}]
-                    values -> values ++ [%{}]
-                  end)
-
-                parser = %Parser{
-                  parser
-                  | elements: [:__LAST__ | elements],
-                    keys: [Access.at(-1) | keys],
-                    parsers: parsers,
-                    state: state
+                {
+                  :cont,
+                  unquote(Builder.handler(struct(field.struct))),
+                  %Parser{
+                    parser
+                    | elements: [:__LAST__, unquote(field.xml_name) | parser.elements],
+                      keys: [Access.at(-1), unquote(field.name) | parser.keys],
+                      handlers: [unquote(Builder.handler(struct(field.struct))) | parser.handlers],
+                      state:
+                        update_in(
+                          parser.state,
+                          Enum.reverse([unquote(field.name) | parser.keys]),
+                          fn
+                            nil -> [attributes]
+                            values -> values ++ [attributes]
+                          end
+                        )
+                  }
                 }
-
-                {:cont, next_parser, parser}
               end
             end
             | functions
@@ -321,15 +353,17 @@ defimpl Sassone.Builder, for: Any do
                       keys: [unquote(field.name) | _]
                     } = parser
                   ) do
-                state =
-                  update_in(parser.state, Enum.reverse(parser.keys), fn
-                    nil -> String.trim(data)
-                    values -> values <> String.trim(data)
-                  end)
-
-                parser = %Parser{parser | state: state}
-
-                {:ok, parser}
+                {
+                  :ok,
+                  %Parser{
+                    parser
+                    | state:
+                        update_in(parser.state, Enum.reverse(parser.keys), fn
+                          nil -> String.trim(data)
+                          values -> values <> String.trim(data)
+                        end)
+                  }
+                }
               end
             end
             | functions
@@ -347,15 +381,17 @@ defimpl Sassone.Builder, for: Any do
                       keys: [unquote(field.name) | _]
                     } = parser
                   ) do
-                state =
-                  update_in(parser.state, Enum.reverse(parser.keys), fn
-                    nil -> [String.trim(data)]
-                    values -> values ++ [String.trim(data)]
-                  end)
-
-                parser = %Parser{parser | state: state}
-
-                {:ok, parser}
+                {
+                  :ok,
+                  %Parser{
+                    parser
+                    | state:
+                        update_in(parser.state, Enum.reverse(parser.keys), fn
+                          nil -> [String.trim(data)]
+                          values -> values ++ [String.trim(data)]
+                        end)
+                  }
+                }
               end
             end
             | functions
@@ -379,17 +415,19 @@ defimpl Sassone.Builder, for: Any do
                 %Parser{
                   keys: [_index, _key | keys],
                   elements: [:__LAST__, element | elements],
-                  parsers: [_cur_paser, prev_parser | parsers]
+                  handlers: [_current_handler, previous_handler | handlers]
                 } = parser
               ) do
-            parser = %Parser{
-              parser
-              | keys: keys,
-                elements: elements,
-                parsers: [prev_parser | parsers]
+            {
+              :cont,
+              previous_handler,
+              %Parser{
+                parser
+                | keys: keys,
+                  elements: elements,
+                  handlers: [previous_handler | handlers]
+              }
             }
-
-            {:cont, prev_parser, parser}
           end
         end,
         quote do
@@ -400,17 +438,19 @@ defimpl Sassone.Builder, for: Any do
                 %Parser{
                   keys: [_key | keys],
                   elements: [element | elements],
-                  parsers: [_cur_paser, prev_parser | parsers]
+                  handlers: [_current_handler, previous_handler | handlers]
                 } = parser
               ) do
-            parser = %Parser{
-              parser
-              | keys: keys,
-                elements: elements,
-                parsers: [prev_parser | parsers]
+            {
+              :cont,
+              previous_handler,
+              %Parser{
+                parser
+                | keys: keys,
+                  elements: elements,
+                  handlers: [previous_handler | handlers]
+              }
             }
-
-            {:cont, prev_parser, parser}
           end
         end,
         quote do
@@ -421,17 +461,19 @@ defimpl Sassone.Builder, for: Any do
                 %Parser{
                   keys: [_key | keys],
                   elements: [element | elements],
-                  parsers: [_cur_paser, prev_parser | parsers]
+                  handlers: [_current_handler, previous_handler | handlers]
                 } = parser
               ) do
-            parser = %Parser{
-              parser
-              | keys: keys,
-                elements: elements,
-                parsers: [prev_parser | parsers]
+            {
+              :cont,
+              previous_handler,
+              %Parser{
+                parser
+                | keys: keys,
+                  elements: elements,
+                  handlers: [previous_handler | handlers]
+              }
             }
-
-            {:cont, prev_parser, parser}
           end
         end,
         quote do
@@ -449,9 +491,7 @@ defimpl Sassone.Builder, for: Any do
                     {_ns, unquote(field.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
-                parser = %Parser{parser | keys: keys, elements: elements}
-
-                {:ok, parser}
+                {:ok, %Parser{parser | keys: keys, elements: elements}}
               end
             end
             | functions
@@ -466,9 +506,7 @@ defimpl Sassone.Builder, for: Any do
                     {_ns, unquote(field.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
-                parser = %Parser{parser | keys: keys, elements: elements}
-
-                {:ok, parser}
+                {:ok, %Parser{parser | keys: keys, elements: elements}}
               end
             end
             | functions
