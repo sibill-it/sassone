@@ -161,12 +161,13 @@ defimpl Sassone.Builder, for: Any do
 
   @doc false
   def parse_attributes(struct, attributes) do
-    Enum.reduce(attributes, %{}, fn {_ns, attribute, value}, state ->
-      Enum.find_value(Builder.attributes(struct), state, fn
-        %Field{xml_name: ^attribute} = field ->
+    Builder.attributes(struct)
+    |> Enum.reduce(%{}, fn %Field{} = field, state ->
+      Enum.find_value(attributes, state, fn
+        {_ns, attribute, value} when attribute == field.xml_name ->
           Map.put(state, field.name, value)
 
-        %Field{} ->
+        {_ns, _attribute, _value} ->
           nil
       end)
     end)
