@@ -455,29 +455,6 @@ defimpl Sassone.Builder, for: Any do
         end,
         quote do
           @impl Sassone.Handler
-          def handle_event(
-                :end_element,
-                {_ns, element},
-                %Parser{
-                  keys: [_key | keys],
-                  elements: [element | elements],
-                  handlers: [_current_handler, previous_handler | handlers]
-                } = parser
-              ) do
-            {
-              :cont,
-              previous_handler,
-              %Parser{
-                parser
-                | keys: keys,
-                  elements: elements,
-                  handlers: [previous_handler | handlers]
-              }
-            }
-          end
-        end,
-        quote do
-          @impl Sassone.Handler
           def handle_event(:end_element, _data, state), do: {:ok, state}
         end
       ],

@@ -57,11 +57,11 @@ defmodule Sassone.TestSchemas do
       root_element: "order",
       fields: [
         id: [type: :attribute],
-        line: [many: true, struct: Line],
+        lines: [many: true, struct: Line, name: "line"],
         status: [type: :element],
         ref: [type: :element]
       ]
     }
-    defstruct [:id, :line, :status, :ref]
+    defstruct [:id, :lines, :status, :ref]
   end
 end

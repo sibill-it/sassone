@@ -21,7 +21,11 @@ defmodule Sassone.BuilderTest do
     test "decode simple schema" do
       assert {:ok, {struct, attrs}} =
                Sassone.parse_string(
-                 ~s|<person gender="male"><name>Bob</name><surname>Price</surname>A friendly mate.</person>|,
+                 ~s|<person gender="male">
+                      <name>Bob</name>
+                      <surname>Price</surname>
+                      A friendly mate.
+                    </person>|,
                  Builder.handler(%Person{}),
                  nil
                )
@@ -36,7 +40,16 @@ defmodule Sassone.BuilderTest do
     test "decode nested schema with single item" do
       assert {:ok, {struct, attrs}} =
                Sassone.parse_string(
-                 ~s|<order id="0193d966-d700-7e86-b290-d3c0fb597ffe"><line sorting="asc"><product uuid="0193d967-2a09-7206-839c-cc85df884f3d"><name>test</name></product><quantity>1.0</quantity></line><status>new</status><ref>order-ref-id</ref></order>|,
+                 ~s|<order id="0193d966-d700-7e86-b290-d3c0fb597ffe">
+                      <line sorting="asc">
+                        <product uuid="0193d967-2a09-7206-839c-cc85df884f3d">
+                          <name>test</name>
+                        </product>
+                        <quantity>1.0</quantity>
+                      </line>
+                      <status>new</status>
+                      <ref>order-ref-id</ref>
+                    </order>|,
                  Builder.handler(%Order{}),
                  nil
                )
@@ -44,7 +57,7 @@ defmodule Sassone.BuilderTest do
       assert Order == struct
       assert attrs.id == "0193d966-d700-7e86-b290-d3c0fb597ffe"
 
-      assert attrs.line == [
+      assert attrs.lines == [
                %{
                  product: %{name: "test", uuid: "0193d967-2a09-7206-839c-cc85df884f3d"},
                  quantity: "1.0",
@@ -60,7 +73,22 @@ defmodule Sassone.BuilderTest do
   test "decode nested schema with multiple items" do
     assert {:ok, {struct, attrs}} =
              Sassone.parse_string(
-               ~s|<order id="1"><line sorting="asc"><product uuid="1"><name>test</name></product><quantity>1.0</quantity></line><line sorting="desc"><product uuid="2"><name>test</name></product><quantity>1.0</quantity></line><status>new</status><ref>order-ref-id</ref></order>|,
+               ~s|<order id="1">
+                    <line sorting="asc">
+                      <product uuid="1">
+                        <name>test 1</name>
+                      </product>
+                      <quantity>1.0</quantity>
+                    </line>
+                    <line sorting="desc">
+                      <product uuid="2">
+                        <name>test 2</name>
+                      </product>
+                      <quantity>1.0</quantity>
+                    </line>
+                    <status>new</status>
+                    <ref>order-ref-id</ref>
+                  </order>|,
                Builder.handler(%Order{}),
                nil
              )
@@ -68,14 +96,14 @@ defmodule Sassone.BuilderTest do
     assert Order == struct
     assert attrs.id == "1"
 
-    assert attrs.line == [
+    assert attrs.lines == [
              %{
-               product: %{name: "test", uuid: "1"},
+               product: %{name: "test 1", uuid: "1"},
                quantity: "1.0",
                sorting: "asc"
              },
              %{
-               product: %{name: "test", uuid: "2"},
+               product: %{name: "test 2", uuid: "2"},
                quantity: "1.0",
                sorting: "desc"
              }
