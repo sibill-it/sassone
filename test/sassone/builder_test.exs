@@ -25,6 +25,7 @@ defmodule Sassone.BuilderTest do
                       <name>Bob</name>
                       <surname>Price</surname>
                       A friendly mate.
+                      <no>sense</no>
                     </person>|,
                  Builder.handler(%Person{}),
                  nil

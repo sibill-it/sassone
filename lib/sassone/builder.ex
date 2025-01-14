@@ -202,28 +202,26 @@ defimpl Sassone.Builder, for: Any do
     Enum.filter(elements, fn %Field{} = field -> field.parse end)
     |> Enum.reduce(
       [
-        if root_element do
-          quote do
-            @impl Sassone.Handler
-            def handle_event(
-                  :start_element,
-                  {_ns, unquote(root_element), attributes},
-                  %Parser{} = parser
-                ) do
-              {
-                :ok,
-                %Parser{
-                  parser
-                  | state: Parser.parse_attributes(struct(parser.struct), attributes)
-                }
+        quote do
+          @impl Sassone.Handler
+          def handle_event(
+                :start_element,
+                {_ns, unquote(root_element), attributes},
+                %Parser{depth: 0} = parser
+              ) do
+            {
+              :ok,
+              %Parser{
+                parser
+                | state: Parser.parse_attributes(struct(parser.struct), attributes)
               }
-            end
+            }
           end
-        else
-          quote do
-            @impl Sassone.Handler
-            def handle_event(:start_element, _data, state), do: {:ok, state}
-          end
+        end,
+        quote do
+          @impl Sassone.Handler
+          def handle_event(:start_element, _data, parser),
+            do: {:ok, %Parser{parser | depth: parser.depth + 1}}
         end
       ],
       fn
@@ -479,7 +477,8 @@ defimpl Sassone.Builder, for: Any do
         end,
         quote do
           @impl Sassone.Handler
-          def handle_event(:end_element, _data, state), do: {:ok, state}
+          def handle_event(:end_element, _data, %Parser{} = parser),
+            do: {:ok, %Parser{parser | depth: parser.depth - 1}}
         end
       ],
       fn

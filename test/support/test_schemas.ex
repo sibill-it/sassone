@@ -54,7 +54,6 @@ defmodule Sassone.TestSchemas do
 
     @derive {
       Sassone.Builder,
-      debug: true,
       element_case: :snake,
       root_element: "order",
       fields: [
