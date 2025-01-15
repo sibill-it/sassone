@@ -27,10 +27,11 @@ defmodule Sassone.TestSchemas do
       root_element: "product",
       fields: [
         uuid: [type: :attribute],
-        name: [type: :element]
+        name: [type: :element],
+        description: [type: :content]
       ]
     }
-    defstruct [:uuid, :name]
+    defstruct [:uuid, :name, :description]
   end
 
   defmodule Line do
@@ -57,11 +58,11 @@ defmodule Sassone.TestSchemas do
       root_element: "order",
       fields: [
         id: [type: :attribute],
-        line: [many: true, struct: Line],
+        lines: [many: true, struct: Line, name: "line"],
         status: [type: :element],
         ref: [type: :element]
       ]
     }
-    defstruct [:id, :line, :status, :ref]
+    defstruct [:id, :lines, :status, :ref]
   end
 end
