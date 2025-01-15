@@ -81,7 +81,7 @@ defmodule Sassone.XML do
     do: {:processing_instruction, name, Encoder.encode(instruction)}
 
   @doc "Builds a struct deriving `Sassone.Builder` for encoding with `Sassone.encode!/2`"
-  @spec build(Builder.t(), namespace() | nil, name()) :: element()
+  @spec build(Builder.t()) :: element()
   def build(struct),
     do: build(struct, Builder.namespace(struct), Builder.root_element(struct) || "Root")
 
