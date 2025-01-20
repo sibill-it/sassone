@@ -136,5 +136,5 @@ defmodule Sassone.Partial do
 
   @spec set_user_state(partial :: t(), user_state :: term()) :: partial :: t()
   defp set_user_state(%__MODULE__{state: state} = partial, user_state),
-    do: %__MODULE__{partial | state: %{state | user_state: user_state}}
+    do: %{partial | state: %{state | user_state: user_state}}
 end

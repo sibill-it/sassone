@@ -2100,16 +2100,16 @@ defmodule Sassone.Parser.Generator do
       defp emit(event, data, %State{} = state, on_halt) do
         case state.handler.handle_event(event, data, state.user_state) do
           {:ok, user_state} ->
-            {:cont, %State{state | user_state: user_state}}
+            {:cont, %{state | user_state: user_state}}
 
           {:stop, user_state} ->
-            {:ok, %State{state | user_state: user_state}}
+            {:ok, %{state | user_state: user_state}}
 
           {:halt, user_state} ->
-            {:halt, %State{state | user_state: user_state}, on_halt}
+            {:halt, %{state | user_state: user_state}, on_halt}
 
           {:cont, handler, user_state} ->
-            {:cont, %State{state | handler: handler, user_state: user_state}}
+            {:cont, %{state | handler: handler, user_state: user_state}}
 
           other ->
             {:error, %ParseError{reason: {:bad_return, {event, other}}}}

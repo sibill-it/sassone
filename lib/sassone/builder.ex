@@ -111,7 +111,8 @@ defimpl Sassone.Builder, for: Any do
           end
 
         xml_name = field_options[:name] || recase(to_string(name), case)
-        %Field{struct(Field, field_options) | xml_name: xml_name, name: name}
+        %Field{} = field = struct(Field, field_options)
+        %{field | xml_name: xml_name, name: name}
       end)
 
     {attributes, elements} =
@@ -211,7 +212,7 @@ defimpl Sassone.Builder, for: Any do
               ) do
             {
               :ok,
-              %Parser{
+              %{
                 parser
                 | state: Parser.parse_attributes(struct(parser.struct), attributes)
               }
@@ -220,8 +221,8 @@ defimpl Sassone.Builder, for: Any do
         end,
         quote do
           @impl Sassone.Handler
-          def handle_event(:start_element, _data, parser),
-            do: {:ok, %Parser{parser | depth: parser.depth + 1}}
+          def handle_event(:start_element, _data, %Parser{} = parser),
+            do: {:ok, %{parser | depth: parser.depth + 1}}
         end
       ],
       fn
@@ -236,7 +237,7 @@ defimpl Sassone.Builder, for: Any do
                   ) do
                 {
                   :ok,
-                  %Parser{
+                  %{
                     parser
                     | depth: parser.depth + 1,
                       elements: [unquote(field.xml_name) | parser.elements],
@@ -260,7 +261,7 @@ defimpl Sassone.Builder, for: Any do
                 {
                   :cont,
                   unquote(Builder.handler(struct(field.struct))),
-                  %Parser{
+                  %{
                     parser
                     | depth: 0,
                       elements: [unquote(field.xml_name) | parser.elements],
@@ -294,7 +295,7 @@ defimpl Sassone.Builder, for: Any do
                 {
                   :cont,
                   unquote(Builder.handler(struct(field.struct))),
-                  %Parser{
+                  %{
                     parser
                     | depth: 0,
                       elements: [:__LAST__, unquote(field.xml_name) | parser.elements],
@@ -343,7 +344,7 @@ defimpl Sassone.Builder, for: Any do
                   ) do
                 {
                   :ok,
-                  %Parser{
+                  %{
                     parser
                     | state:
                         update_in(
@@ -375,7 +376,7 @@ defimpl Sassone.Builder, for: Any do
                   ) do
                 {
                   :ok,
-                  %Parser{
+                  %{
                     parser
                     | state:
                         update_in(parser.state, Enum.reverse(parser.keys), fn
@@ -403,7 +404,7 @@ defimpl Sassone.Builder, for: Any do
                   ) do
                 {
                   :ok,
-                  %Parser{
+                  %{
                     parser
                     | state:
                         update_in(parser.state, Enum.reverse(parser.keys), fn
@@ -441,7 +442,7 @@ defimpl Sassone.Builder, for: Any do
             {
               :cont,
               previous_handler,
-              %Parser{
+              %{
                 parser
                 | depth: 0,
                   keys: keys,
@@ -465,7 +466,7 @@ defimpl Sassone.Builder, for: Any do
             {
               :cont,
               previous_handler,
-              %Parser{
+              %{
                 parser
                 | depth: 0,
                   keys: keys,
@@ -478,7 +479,7 @@ defimpl Sassone.Builder, for: Any do
         quote do
           @impl Sassone.Handler
           def handle_event(:end_element, _data, %Parser{} = parser),
-            do: {:ok, %Parser{parser | depth: parser.depth - 1}}
+            do: {:ok, %{parser | depth: parser.depth - 1}}
         end
       ],
       fn
@@ -491,7 +492,7 @@ defimpl Sassone.Builder, for: Any do
                     {_ns, unquote(field.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
-                {:ok, %Parser{parser | depth: parser.depth - 1, keys: keys, elements: elements}}
+                {:ok, %{parser | depth: parser.depth - 1, keys: keys, elements: elements}}
               end
             end
             | functions
@@ -506,7 +507,7 @@ defimpl Sassone.Builder, for: Any do
                     {_ns, unquote(field.xml_name) = element},
                     %Parser{keys: [_key | keys], elements: [element | elements]} = parser
                   ) do
-                {:ok, %Parser{parser | depth: parser.depth - 1, keys: keys, elements: elements}}
+                {:ok, %{parser | depth: parser.depth - 1, keys: keys, elements: elements}}
               end
             end
             | functions
