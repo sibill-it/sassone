@@ -24,3 +24,5 @@ sassone-*.tar
 
 # Temporary files for e.g. tests.
 /tmp
+
+.expert

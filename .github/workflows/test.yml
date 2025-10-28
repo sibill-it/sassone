@@ -1,85 +1,60 @@
-name: Test suite
+name: Continuous Integration
 
 on:
+  pull_request:
+    types: [opened, reopened, synchronize]
   push:
     branches:
-      - main
-  pull_request:
+      - "main"
 
 jobs:
-  build:
-    name: Test (${{matrix.elixir}}/${{matrix.otp}})
-    runs-on: ubuntu-latest
+  test:
+    env:
+      MIX_ENV: test
+    runs-on: ubuntu-24.04
+    name: Test (OTP ${{ matrix.otp }} / Elixir ${{ matrix.elixir }})
     strategy:
       matrix:
-        otp: [24.x, 25.x, 26.x, 27.x]
-        elixir: [1.12.x, 1.13.x, 1.14.x, 1.15.x, 1.16.x, 1.17.x]
+        elixir: ["1.19", "1.18", "1.17", "1.16", "1.15"]
+        otp: ["28", "27", "26", "25", "24"]
         exclude:
-          - otp: 27.x
-            elixir: 1.16.x
-          - otp: 27.x
-            elixir: 1.15.x
-          - otp: 27.x
-            elixir: 1.14.x
-          - otp: 27.x
-            elixir: 1.13.x
-          - otp: 27.x
-            elixir: 1.12.x
-          - otp: 26.x
-            elixir: 1.13.x
-          - otp: 26.x
-            elixir: 1.12.x
-          - otp: 25.x
-            elixir: 1.13.x
-          - otp: 25.x
-            elixir: 1.12.x
-          - otp: 24.x
-            elixir: 1.17.x
+          - { otp: "24", elixir: "1.19" }
+          - { otp: "24", elixir: "1.18" }
+          - { otp: "24", elixir: "1.17" }
+          - { otp: "25", elixir: "1.19" }
+          - { otp: "27", elixir: "1.16" }
+          - { otp: "27", elixir: "1.15" }
+          - { otp: "28", elixir: "1.17" }
+          - { otp: "28", elixir: "1.16" }
+          - { otp: "28", elixir: "1.15" }
     steps:
       - uses: actions/checkout@v5
       - uses: erlef/setup-beam@v1
         with:
-          elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
-      - name: Restore dependencies cache
-        uses: actions/cache@v4
-        with:
-          path: deps
-          key: |
-            ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-${{ hashFiles('**/mix.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-
-
-      - name: Install Dependencies
-        run: mix deps.get
-
-      - name: Run Tests
-        run: mix test
+          elixir-version: ${{ matrix.elixir }}
+      - run: mix deps.get
+      - run: mix test
 
   lint:
     runs-on: ubuntu-latest
     name: Linting
-    strategy:
-      matrix:
-        elixir: ["1.17"]
-        otp: ["27"]
     steps:
       - uses: actions/checkout@v5
       - uses: erlef/setup-beam@v1
         id: beam
         with:
-          otp-version: ${{ matrix.otp }}
-          elixir-version: ${{ matrix.elixir }}
-      - name: Build cache
+          version-file: .tool-versions
+          version-type: strict
+      - name: PLT cache
         uses: actions/cache@v4
         with:
-          path: |
-            deps
-            _build
           key: |
-            ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-${{ hashFiles('**/mix.lock') }}
+            ${{ runner.os }}-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-plt
           restore-keys: |
-            ${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-mix-
+            ${{ runner.os }}-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-plt
+          path: |
+            priv/plts
       - run: mix deps.get
       - run: mix deps.unlock --check-unused
       - run: mix compile --warnings-as-errors
