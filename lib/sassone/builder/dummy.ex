@@ -1,4 +1,5 @@
 defmodule Sassone.Builder.Dummy do
+  @moduledoc false
   defstruct []
 end
 
