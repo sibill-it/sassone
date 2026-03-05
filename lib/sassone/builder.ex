@@ -136,8 +136,8 @@ defimpl Sassone.Builder, for: Any do
       defimpl Sassone.Builder, for: unquote(module) do
         @behaviour Sassone.Handler
 
-        alias Sassone.XML
         alias Sassone.Builder.Parser
+        alias Sassone.XML
 
         unquote(start_document)
         unquote(end_document)
