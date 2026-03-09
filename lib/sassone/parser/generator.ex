@@ -1,6 +1,10 @@
 defmodule Sassone.Parser.Generator do
   @moduledoc false
 
+  # credo:disable-for-this-file Credo.Check.Refactor.LongQuoteBlocks
+  # credo:disable-for-this-file Credo.Check.Refactor.FunctionArity
+  # credo:disable-for-this-file Credo.Check.Refactor.Nesting
+
   import Sassone.Parser.Generator.{BufferingHelper, Guards, Lookahead}
 
   defmacro __using__(options) do
