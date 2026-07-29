@@ -886,7 +886,7 @@ defmodule Sassone.Parser.Generator do
            ) do
         lookahead(buffer, @streaming) do
           ^open_quote <> rest ->
-            att_value = [acc | binary_part(original, pos, len)] |> IO.iodata_to_binary()
+            att_value = [acc, binary_part(original, pos, len)] |> IO.iodata_to_binary()
             attributes = [{ns, att_name, att_value} | attributes]
 
             sattribute(rest, more?, original, pos + len + 1, state, attributes)
@@ -909,7 +909,7 @@ defmodule Sassone.Parser.Generator do
 
           "&#x" <> rest ->
             att_value = binary_part(original, pos, len)
-            acc = [acc | att_value]
+            acc = [acc, att_value]
             pos = pos + len + 3
 
             att_value_char_hex_ref(
@@ -927,7 +927,7 @@ defmodule Sassone.Parser.Generator do
 
           "&#" <> rest ->
             att_value = binary_part(original, pos, len)
-            acc = [acc | att_value]
+            acc = [acc, att_value]
             pos = pos + len + 2
 
             att_value_char_dec_ref(
@@ -945,7 +945,7 @@ defmodule Sassone.Parser.Generator do
 
           "&" <> rest ->
             att_value = binary_part(original, pos, len)
-            acc = [acc | att_value]
+            acc = [acc, att_value]
             pos = pos + len + 1
 
             att_value_entity_ref(
@@ -1158,7 +1158,7 @@ defmodule Sassone.Parser.Generator do
           ";" <> rest ->
             name = binary_part(original, pos, len)
             converted = Parser.convert_entity_reference(name, state.expand_entity)
-            acc = [acc | converted]
+            acc = [acc, converted]
 
             att_value(
               rest,
@@ -1237,7 +1237,7 @@ defmodule Sassone.Parser.Generator do
               attributes,
               open_quote,
               att_name,
-              [acc | <<codepoint::utf8>>],
+              [acc, <<codepoint::utf8>>],
               0
             )
 
@@ -1305,7 +1305,7 @@ defmodule Sassone.Parser.Generator do
               attributes,
               open_quote,
               att_name,
-              [acc | <<codepoint::utf8>>],
+              [acc, <<codepoint::utf8>>],
               0
             )
 
@@ -1486,7 +1486,7 @@ defmodule Sassone.Parser.Generator do
           char <> rest when is_ascii(char) ->
             case char do
               ?< ->
-                chars = IO.iodata_to_binary([acc | binary_part(original, pos, len)])
+                chars = IO.iodata_to_binary([acc, binary_part(original, pos, len)])
                 pos = pos + len + 1
 
                 with {:cont, state} <- emit(:characters, chars, state, {original, pos - 1}) do
@@ -1497,7 +1497,8 @@ defmodule Sassone.Parser.Generator do
                 chars = binary_part(original, pos, len)
 
                 element_content_reference(rest, more?, original, pos + len + 1, state, [
-                  acc | chars
+                  acc,
+                  chars
                 ])
 
               _ ->
@@ -1522,7 +1523,7 @@ defmodule Sassone.Parser.Generator do
             %{character_data_max_length: max_length} = state
 
             if max_length != :infinity and len >= max_length do
-              chars = IO.iodata_to_binary([acc | binary_part(original, pos, len)])
+              chars = IO.iodata_to_binary([acc, binary_part(original, pos, len)])
               pos = pos + len
 
               with {:cont, state} <- emit(:characters, chars, state, {original, pos}) do
@@ -1588,7 +1589,7 @@ defmodule Sassone.Parser.Generator do
           ";" <> rest ->
             name = binary_part(original, pos, len)
             char = Parser.convert_entity_reference(name, state.expand_entity)
-            chardata(rest, more?, original, pos + len + 1, state, [acc | char], 0)
+            chardata(rest, more?, original, pos + len + 1, state, [acc, char], 0)
 
           _ in [""] when more? ->
             halt!(element_entity_ref("", more?, original, pos, state, acc, len))
@@ -1612,7 +1613,7 @@ defmodule Sassone.Parser.Generator do
             else
               char = original |> binary_part(pos, len) |> String.to_integer(10)
 
-              chardata(rest, more?, original, pos + len + 1, state, [acc | <<char::utf8>>], 0)
+              chardata(rest, more?, original, pos + len + 1, state, [acc, <<char::utf8>>], 0)
             end
 
           char <> rest when char in ?0..?9 ->
@@ -1637,7 +1638,7 @@ defmodule Sassone.Parser.Generator do
             else
               char = original |> binary_part(pos, len) |> String.to_integer(16)
 
-              chardata(rest, more?, original, pos + len + 1, state, [acc | <<char::utf8>>], 0)
+              chardata(rest, more?, original, pos + len + 1, state, [acc, <<char::utf8>>], 0)
             end
 
           char <> rest when char in ?0..?9 or char in ?A..?F or char in ?a..?f ->
