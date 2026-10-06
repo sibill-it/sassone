@@ -22,7 +22,7 @@ defmodule Sassone.MixProject do
   defp deps() do
     [
       {:credo, "~> 1.0", only: :dev, runtime: false},
-      {:ex_doc, "0.40.3", only: :dev, runtime: false},
+      {:ex_doc, "0.40.4", only: :dev, runtime: false},
       {:nimble_options, "~> 1.0"},
       {:recase, "0.9.1"},
       {:stream_data, "~> 1.0", only: [:dev, :test]}
