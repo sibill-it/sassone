@@ -1,6 +1,35 @@
 defmodule Sassone.TestSchemas do
   @moduledoc false
 
+  defmodule AttributeRecord do
+    @moduledoc false
+
+    @derive {
+      Sassone.Builder,
+      root_element: "record",
+      fields: [
+        id: [type: :attribute],
+        foreign_id: [type: :attribute, namespace: "foreign", name: "id"],
+        ignored: [type: :attribute, parse: false]
+      ]
+    }
+    defstruct [:id, :foreign_id, :ignored]
+  end
+
+  defmodule AttributeEnvelope do
+    @moduledoc false
+
+    @derive {
+      Sassone.Builder,
+      root_element: "envelope",
+      fields: [
+        record: [struct: AttributeRecord, name: "record"],
+        records: [struct: AttributeRecord, name: "entry", many: true]
+      ]
+    }
+    defstruct [:record, :records]
+  end
+
   defmodule Person do
     @moduledoc false
 

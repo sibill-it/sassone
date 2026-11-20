@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+* Honor `parse: false` and namespace options when mapping XML attributes to builder fields.
+
 ## v1.0.0 - 2024-09-16
 
 * Add support for `{:cont, handler, state}` as `Saxy.Handler` callbacks return value.

@@ -2,7 +2,7 @@ defmodule Sassone.BuilderTest do
   use ExUnit.Case, async: true
 
   alias Sassone.Builder
-  alias Sassone.TestSchemas.{Order, Person}
+  alias Sassone.TestSchemas.{AttributeEnvelope, AttributeRecord, Order, Person}
 
   describe "building" do
     test "encode simple schema" do
@@ -18,6 +18,69 @@ defmodule Sassone.BuilderTest do
   end
 
   describe "parsing" do
+    test "honors parse: false for attributes without disabling their serialization" do
+      xml = Sassone.XML.build(%AttributeRecord{id: "1", ignored: "build-only"})
+      assert {nil, "record", attributes, []} = xml
+      assert {nil, "ignored", "build-only"} in attributes
+
+      expected = %{id: "1"}
+
+      assert {:ok, {AttributeRecord, ^expected}} =
+               Sassone.parse_string(
+                 Sassone.encode!(xml),
+                 Builder.handler(%AttributeRecord{}),
+                 nil
+               )
+    end
+
+    test "matches attribute names and namespaces regardless of attribute order" do
+      for attributes <- [
+            ~s|id="local" foreign:id="remote" other:id="other"|,
+            ~s|other:id="other" foreign:id="remote" id="local"|
+          ] do
+        xml = ~s|<record xmlns:foreign="urn:foreign" xmlns:other="urn:other" #{attributes}/>|
+
+        expected = %{id: "local", foreign_id: "remote"}
+
+        assert {:ok, {AttributeRecord, ^expected}} =
+                 Sassone.parse_string(xml, Builder.handler(%AttributeRecord{}), nil)
+      end
+    end
+
+    test "does not populate a field from an attribute in another namespace" do
+      xml = ~s|<record xmlns:other="urn:other" other:id="other" ignored="skip"/>|
+
+      expected = %{}
+
+      assert {:ok, {AttributeRecord, ^expected}} =
+               Sassone.parse_string(xml, Builder.handler(%AttributeRecord{}), nil)
+    end
+
+    test "honors attribute field options in nested records while streaming" do
+      xml = """
+      <envelope xmlns:foreign="urn:foreign">
+        <record foreign:id="single-remote" id="single-local" ignored="skip"/>
+        <entry id="first-local" foreign:id="first-remote" ignored="skip"/>
+        <entry foreign:id="second-remote" id="second-local" ignored="skip"/>
+      </envelope>
+      """
+
+      expected =
+        {:ok,
+         {AttributeEnvelope,
+          %{
+            record: %{id: "single-local", foreign_id: "single-remote"},
+            records: [
+              %{id: "first-local", foreign_id: "first-remote"},
+              %{id: "second-local", foreign_id: "second-remote"}
+            ]
+          }}}
+
+      handler = Builder.handler(%AttributeEnvelope{})
+      assert Sassone.parse_string(xml, handler, nil) == expected
+      assert Sassone.parse_stream(String.graphemes(xml), handler, nil) == expected
+    end
+
     test "decode simple schema" do
       assert {:ok, {struct, attrs}} =
                Sassone.parse_string(
